@@ -4,39 +4,45 @@
     "slug": "mandir-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "mandirapp",
-    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
     },
     "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
+    "extra": {
+      "firebaseApiKey": "your_firebase_api_key_here",
+      "firebaseAuthDomain": "your_project.firebaseapp.com",
+      "firebaseProjectId": "your_project_id",
+      "firebaseStorageBucket": "your_project.appspot.com",
+      "firebaseMessagingSenderId": "your_sender_id",
+      "firebaseAppId": "your_app_id",
+      "openaiApiKey": "your_openai_api_key_here",
+      "astroApiKey": "your_astro_api_key_here",
+      "divineApiKey": "your_divine_api_key_here",
+      "astrologyApiKey": "your_astrology_api_key_here",
+      "prokeralaClientId": "your_prokerala_client_id_here",
+      "prokeralaClientSecret": "your_prokerala_client_secret_here",
+      "youtubeApiKey": "your_youtube_api_key_here",
+      "huggingfaceApiKey": "your_huggingface_api_key_here",
+      "cohereApiKey": "your_cohere_api_key_here",
+      "anthropicApiKey": "your_anthropic_api_key_here"
     }
   }
 }

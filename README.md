@@ -1,50 +1,290 @@
-# Welcome to your Expo app 👋
+# MyMandir - Spiritual Journey App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A comprehensive React Native (Expo) app for spiritual engagement, astrology, and devotional experiences.
 
-## Get started
+## 🌟 Features
 
-1. Install dependencies
+### Core Features
+- **Daily Devotion Feed** - AI-generated spiritual content with Bhagavad Gita verses
+- **AI Jyotish** - Intelligent astrology chatbot powered by OpenAI
+- **Horoscope & Panchang** - Daily astrology readings and auspicious timings
+- **Temple Feed** - Virtual darshan and spiritual experiences
+- **Mantra Player** - Audio playback with looping and favorites
+- **AI Shloka Generator** - Generate Sanskrit verses based on emotions
+- **Expert Jyotish Directory** - Connect with astrology experts
+- **User Profile & Settings** - Personalized spiritual journey tracking
+- **Push Notifications** - Daily reminders and streak tracking
+- **Streak System** - Gamified spiritual practice tracking
 
+### Technical Features
+- **TypeScript** - Full type safety
+- **Firebase Integration** - Authentication, Firestore, Storage
+- **OpenAI Integration** - AI-powered content generation
+- **Expo Notifications** - Push notification system
+- **Expo AV** - Audio playback capabilities
+- **Comprehensive Testing** - Jest + React Native Testing Library
+- **Themed UI Components** - Saffron/gold design system
+- **Responsive Design** - Works on all screen sizes
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator or Android Emulator (for testing)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd mandir-app
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Start the app
+3. **Set up environment variables**
+   Create a `.env` file in the root directory:
+   ```env
+   # Firebase Configuration
+   FIREBASE_API_KEY=your_firebase_api_key
+   FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   FIREBASE_APP_ID=your_app_id
 
-   ```bash
-   npx expo start
+   # OpenAI Configuration
+   OPENAI_API_KEY=your_openai_api_key
+
+   # Astrology API Configuration
+   ASTRO_API_KEY=your_astro_api_key
    ```
 
-In the output, you'll find options to open the app in a
+4. **Configure Firebase**
+   - Create a Firebase project
+   - Enable Authentication (Google, Phone)
+   - Set up Firestore database
+   - Configure Storage
+   - Add your app to the project
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+5. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+6. **Run on device/simulator**
+   ```bash
+   # iOS
+   npm run ios
 
-## Get a fresh project
+   # Android
+   npm run android
+   ```
 
-When you're ready, run:
+## 🏗️ Project Structure
 
-```bash
-npm run reset-project
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # Themed UI components
+│   ├── home/           # Home screen components
+│   ├── profile/        # Profile screen components
+│   ├── mantra/         # Mantra player components
+│   └── shloka/         # Shloka generator components
+├── screens/            # Screen components
+│   ├── auth/           # Authentication screens
+│   ├── Home/           # Home screen
+│   ├── Horoscope/      # Horoscope screen
+│   ├── AIJyotish/      # AI Jyotish screen
+│   ├── MantraPlayer/   # Mantra player screen
+│   ├── TempleFeed/     # Temple feed screen
+│   ├── ShlokaGenerator/ # Shloka generator screen
+│   └── Profile/        # Profile screen
+├── services/           # API and business logic
+│   ├── firebase.ts     # Firebase configuration
+│   ├── geetaApi.ts     # Bhagavad Gita API
+│   ├── openaiService.ts # OpenAI integration
+│   ├── astroService.ts # Astrology API
+│   ├── notificationService.ts # Push notifications
+│   └── streakService.ts # Streak tracking
+├── contexts/           # React contexts
+│   └── AuthContext.tsx # Authentication context
+├── hooks/              # Custom React hooks
+│   └── useNotifications.ts # Notification and streak hooks
+├── navigation/         # Navigation configuration
+│   └── AppNavigator.tsx
+├── theme/              # Design system
+│   ├── colors.ts       # Color palette
+│   └── theme.ts        # Complete theme system
+├── types/              # TypeScript type definitions
+│   └── index.ts
+├── utils/              # Utility functions
+│   └── testUtils.ts    # Testing utilities
+└── __tests__/          # Test files
+    ├── components/     # Component tests
+    ├── screens/        # Screen tests
+    ├── services/       # Service tests
+    └── utils/          # Utility tests
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🎨 Design System
 
-## Learn more
+### Color Palette
+- **Primary**: Saffron (#FF6F00)
+- **Secondary**: White (#FFFFFF)
+- **Accent**: Gold (#FFD700)
+- **Background**: Cream (#FFF8E1)
+- **Text**: Dark Gray (#2E2E2E)
 
-To learn more about developing your project with Expo, look at the following resources:
+### Typography
+- **Primary Font**: System (iOS) / Roboto (Android)
+- **Sanskrit Font**: Noto Sans Devanagari
+- **Sizes**: 12px to 64px scale
+- **Weights**: Light (300) to Black (900)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Components
+- **ThemedText** - Typography component with variants
+- **ThemedButton** - Button component with multiple styles
+- **ThemedCard** - Card component with elevation options
+- **ThemedInput** - Input component with validation
 
-## Join the community
+## 🧪 Testing
 
-Join our community of developers creating universal apps.
+### Running Tests
+```bash
+# Run all tests
+npm test
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Run specific test file
+npm test src/__tests__/components/ui/UIComponents.test.tsx
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+### Test Structure
+- **Component Tests** - Test UI component rendering and behavior
+- **Screen Tests** - Test screen functionality and navigation
+- **Service Tests** - Test API integrations and business logic
+- **Integration Tests** - Test complete user flows
+
+## 📱 API Integrations
+
+### Firebase
+- **Authentication** - Google and Phone sign-in
+- **Firestore** - User profiles and app data
+- **Storage** - Media files and user uploads
+
+### OpenAI
+- **GPT-4** - AI Jyotish responses
+- **Content Generation** - Spiritual quotes and insights
+
+### Bhagavad Gita API
+- **Random Verses** - Daily spiritual content
+- **Specific Verses** - Search by chapter and verse
+
+### Astrology APIs
+- **Daily Horoscopes** - Zodiac sign predictions
+- **Panchang** - Hindu calendar information
+- **Auspicious Timings** - Best times for activities
+
+## 🔔 Notifications
+
+### Notification Types
+- **Daily Devotion** - Morning spiritual content
+- **Streak Reminders** - Evening motivation
+- **Mantra Practice** - Meditation reminders
+- **Horoscope Updates** - Daily astrology readings
+
+### Configuration
+```typescript
+// Enable notifications
+const { requestPermissions } = useNotifications();
+await requestPermissions();
+
+// Schedule custom notification
+await NotificationService.scheduleNotification({
+  title: 'Custom Title',
+  body: 'Custom Message',
+  trigger: { hour: 9, minute: 0, repeats: true }
+});
+```
+
+## 📊 Streak System
+
+### Features
+- **Daily Tracking** - Track spiritual practice consistency
+- **Achievements** - Unlock badges for milestones
+- **Karma Points** - Earn points for engagement
+- **Statistics** - View progress and history
+
+### Implementation
+```typescript
+// Update user streak
+const { updateStreak } = useStreak();
+await updateStreak();
+
+// Get streak data
+const { streakData } = useStreak();
+console.log(streakData.currentStreak);
+```
+
+## 🚀 Deployment
+
+### Expo Build
+```bash
+# Build for iOS
+expo build:ios
+
+# Build for Android
+expo build:android
+
+# Build for web
+expo build:web
+```
+
+### App Store Deployment
+1. Configure app.json with proper bundle identifiers
+2. Build production version
+3. Submit to App Store Connect / Google Play Console
+4. Configure push notifications for production
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **Bhagavad Gita API** - For providing spiritual content
+- **OpenAI** - For AI-powered features
+- **Expo** - For the development platform
+- **Firebase** - For backend services
+- **React Native Community** - For excellent libraries
+
+## 📞 Support
+
+For support and questions:
+- Create an issue in the repository
+- Contact the development team
+- Check the documentation
+
+---
+
+**MyMandir** - Your daily dose of divinity 🌅
