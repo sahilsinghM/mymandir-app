@@ -57,6 +57,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     firebaseAppId: process.env.FIREBASE_APP_ID,
     openaiApiKey: process.env.OPENAI_API_KEY,
     astroApiKey: process.env.ASTRO_API_KEY,
+    astrologyApiKey: process.env.ASTROLOGY_API_KEY,
+    divineApiKey: process.env.DIVINE_API_KEY,
+    youtubeApiKey: process.env.YOUTUBE_API_KEY,
+    prokeralaClientId: process.env.PROKERALA_CLIENT_ID,
+    prokeralaClientSecret: process.env.PROKERALA_CLIENT_SECRET,
+    huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY,
+    cohereApiKey: process.env.COHERE_API_KEY,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   }
 });
 

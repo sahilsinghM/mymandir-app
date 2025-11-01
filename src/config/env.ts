@@ -9,6 +9,14 @@ interface EnvConfig {
   firebaseAppId: string;
   openaiApiKey: string;
   astroApiKey: string;
+  astrologyApiKey: string;
+  divineApiKey: string;
+  youtubeApiKey: string;
+  prokeralaClientId: string;
+  prokeralaClientSecret: string;
+  huggingfaceApiKey: string;
+  cohereApiKey: string;
+  anthropicApiKey: string;
 }
 
 export const getEnvVar = (key: keyof EnvConfig): string => {
@@ -29,5 +37,13 @@ export const env: EnvConfig = {
   firebaseAppId: getEnvVar('firebaseAppId'),
   openaiApiKey: getEnvVar('openaiApiKey'),
   astroApiKey: getEnvVar('astroApiKey'),
+  astrologyApiKey: getEnvVar('astrologyApiKey'),
+  divineApiKey: getEnvVar('divineApiKey'),
+  youtubeApiKey: getEnvVar('youtubeApiKey'),
+  prokeralaClientId: getEnvVar('prokeralaClientId'),
+  prokeralaClientSecret: getEnvVar('prokeralaClientSecret'),
+  huggingfaceApiKey: getEnvVar('huggingfaceApiKey'),
+  cohereApiKey: getEnvVar('cohereApiKey'),
+  anthropicApiKey: getEnvVar('anthropicApiKey'),
 };
 

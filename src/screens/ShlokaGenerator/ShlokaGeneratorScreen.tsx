@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 import ShlokaGenerator from '../../components/shloka/ShlokaGenerator';
+import { ShlokaGeneration } from '../../services/freeAIService';
 
 const ShlokaGeneratorScreen: React.FC = () => {
-  const handleShlokaGenerated = (shloka: any) => {
+  const handleShlokaGenerated = (shloka: ShlokaGeneration) => {
     console.log('Shloka generated:', shloka);
   };
 

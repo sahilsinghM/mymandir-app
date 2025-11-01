@@ -4,14 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
-import { OpenAIService, UserProfile } from '../../services/openaiService';
+import { FreeAIService, AIResponse as FreeAIResponse } from '../../services/freeAIService';
+import { OpenAIService, UserProfile as OpenAIUserProfile } from '../../services/openaiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { UserProfile as AppUserProfile } from '../../types/firestore';
 
 interface ChatMessage {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
+  providerLabel?: string;
 }
 
 const AIJyotishScreen: React.FC = () => {
@@ -29,12 +32,43 @@ const AIJyotishScreen: React.FC = () => {
 
   const quickPrompts = OpenAIService.getQuickPrompts();
 
+  const profilePayload = (profile: AppUserProfile | null | undefined) => ({
+    deityPreference: profile?.deityPreference,
+    language: profile?.language,
+    birthDate: profile?.birthDate,
+    birthTime: profile?.birthTime,
+    birthPlace: profile?.birthPlace,
+  });
+
+  const parseTimestamp = (timestamp?: string): Date => {
+    if (!timestamp) {
+      return new Date();
+    }
+    const parsed = new Date(timestamp);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
+  const getProviderLabel = (provider: FreeAIResponse['provider']): string => {
+    switch (provider) {
+      case 'huggingface':
+        return 'Powered by Hugging Face';
+      case 'cohere':
+        return 'Powered by Cohere';
+      case 'anthropic':
+        return 'Powered by Anthropic Claude';
+      case 'mock':
+      default:
+        return 'AI Guidance (Offline Mode)';
+    }
+  };
+
   const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      text: text.trim(),
+      text: trimmed,
       isUser: true,
       timestamp: new Date(),
     };
@@ -43,22 +77,54 @@ const AIJyotishScreen: React.FC = () => {
     setInputText('');
     setLoading(true);
 
-    try {
-      const profile: UserProfile = {
-        deityPreference: userProfile?.deityPreference,
-        language: userProfile?.language,
-        birthDate: userProfile?.birthDate,
-        birthTime: userProfile?.birthTime,
-        birthPlace: userProfile?.birthPlace,
-      };
+    const aiProfile = profilePayload(userProfile);
 
-      const response = await OpenAIService.generateJyotishResponse(text.trim(), profile);
-      
+    const tryOpenAiFallback = async (): Promise<{ text: string; timestamp: Date; providerLabel: string } | null> => {
+      try {
+        const openAiResponse = await OpenAIService.generateJyotishResponse(trimmed, aiProfile as OpenAIUserProfile);
+        return {
+          text: openAiResponse.content,
+          timestamp: parseTimestamp(openAiResponse.timestamp),
+          providerLabel: 'Powered by OpenAI',
+        };
+      } catch (fallbackError) {
+        console.warn('OpenAI fallback failed:', fallbackError);
+        return null;
+      }
+    };
+
+    try {
+      let response: FreeAIResponse | null = null;
+      try {
+        response = await FreeAIService.generateJyotishResponse(trimmed, aiProfile);
+      } catch (freeError) {
+        console.error('Free AI providers failed:', freeError);
+      }
+
+      let aiText = response?.content || '';
+      let providerLabel = response ? getProviderLabel(response.provider) : 'AI Guidance';
+      let aiTimestamp = response ? parseTimestamp(response.timestamp) : new Date();
+
+      if (!response || response.provider === 'mock' || !aiText) {
+        const fallback = await tryOpenAiFallback();
+        if (fallback) {
+          aiText = fallback.text;
+          providerLabel = fallback.providerLabel;
+          aiTimestamp = fallback.timestamp;
+        }
+      }
+
+      if (!aiText) {
+        aiText = 'I am unable to respond right now. Please try again in a moment.';
+        providerLabel = 'System Message';
+      }
+
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: response,
+        text: aiText,
         isUser: false,
-        timestamp: new Date(),
+        timestamp: aiTimestamp,
+        providerLabel,
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -88,6 +154,9 @@ const AIJyotishScreen: React.FC = () => {
           message.isUser ? styles.userBubble : styles.aiBubble,
         ]}
       >
+        {!message.isUser && message.providerLabel && (
+          <Text style={styles.providerLabel}>{message.providerLabel}</Text>
+        )}
         <Text
           style={[
             styles.messageText,
@@ -208,6 +277,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     ...shadows.small,
+  },
+  providerLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 6,
   },
   userBubble: {
     backgroundColor: colors.primary,

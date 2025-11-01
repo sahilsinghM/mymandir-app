@@ -12,17 +12,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
-import { OpenAIService } from '../../services/openaiService';
+import { FreeAIService, ShlokaGeneration } from '../../services/freeAIService';
 import { useAuth } from '../../contexts/AuthContext';
-
-interface GeneratedShloka {
-  sanskrit: string;
-  translation: string;
-  meaning: string;
-}
+import { UserProfile as AppUserProfile } from '../../types/firestore';
 
 interface ShlokaGeneratorProps {
-  onShlokaGenerated?: (shloka: GeneratedShloka) => void;
+  onShlokaGenerated?: (shloka: ShlokaGeneration) => void;
 }
 
 const EMOTION_SUGGESTIONS = [
@@ -35,8 +30,16 @@ export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
 }) => {
   const { userProfile } = useAuth();
   const [emotion, setEmotion] = useState('');
-  const [generatedShloka, setGeneratedShloka] = useState<GeneratedShloka | null>(null);
+  const [generatedShloka, setGeneratedShloka] = useState<ShlokaGeneration | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const buildProfilePayload = (profile: AppUserProfile | null | undefined) => ({
+    deityPreference: profile?.deityPreference,
+    language: profile?.language,
+  });
+
+  const formatCategory = (category: ShlokaGeneration['category']) =>
+    category.charAt(0).toUpperCase() + category.slice(1);
 
   const generateShloka = async () => {
     if (!emotion.trim()) {
@@ -48,13 +51,9 @@ export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
       setLoading(true);
       setGeneratedShloka(null);
 
-      const deityPreference = userProfile?.deityPreference || 'Krishna';
-      const language = userProfile?.language || 'english';
-
-      const result = await OpenAIService.generateShloka(
+      const result = await FreeAIService.generateShloka(
         emotion.trim(),
-        deityPreference,
-        language
+        buildProfilePayload(userProfile)
       );
 
       setGeneratedShloka(result);
@@ -75,7 +74,16 @@ export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
     if (!generatedShloka) return;
 
     try {
-      const shareText = `${generatedShloka.sanskrit}\n\n${generatedShloka.translation}\n\n${generatedShloka.meaning}`;
+      const sections = [
+        generatedShloka.sanskrit,
+        generatedShloka.transliteration ? `Transliteration: ${generatedShloka.transliteration}` : null,
+        generatedShloka.translation ? `Translation: ${generatedShloka.translation}` : null,
+        generatedShloka.meaning ? `Meaning: ${generatedShloka.meaning}` : null,
+        generatedShloka.deity ? `Deity: ${generatedShloka.deity}` : null,
+        generatedShloka.category ? `Category: ${formatCategory(generatedShloka.category)}` : null,
+      ].filter(Boolean);
+
+      const shareText = sections.join('\n\n');
       
       // TODO: Implement sharing functionality
       console.log('Sharing shloka:', shareText);
@@ -179,8 +187,31 @@ export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
 
               <View style={styles.shlokaContent}>
                 <Text style={styles.sanskritText}>{generatedShloka.sanskrit}</Text>
-                <Text style={styles.translationText}>{generatedShloka.translation}</Text>
-                <Text style={styles.meaningText}>{generatedShloka.meaning}</Text>
+                {generatedShloka.transliteration ? (
+                  <Text style={styles.transliterationText}>{generatedShloka.transliteration}</Text>
+                ) : null}
+                {generatedShloka.translation ? (
+                  <Text style={styles.translationText}>{generatedShloka.translation}</Text>
+                ) : null}
+                {generatedShloka.meaning ? (
+                  <Text style={styles.meaningText}>{generatedShloka.meaning}</Text>
+                ) : null}
+                {(generatedShloka.deity || generatedShloka.category) && (
+                  <View style={styles.metadataContainer}>
+                    {generatedShloka.deity ? (
+                      <View style={styles.metadataChip}>
+                        <Text style={styles.metadataLabel}>Deity</Text>
+                        <Text style={styles.metadataValue}>{generatedShloka.deity}</Text>
+                      </View>
+                    ) : null}
+                    {generatedShloka.category ? (
+                      <View style={styles.metadataChip}>
+                        <Text style={styles.metadataLabel}>Category</Text>
+                        <Text style={styles.metadataValue}>{formatCategory(generatedShloka.category)}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
               </View>
 
               <View style={styles.shlokaActions}>
@@ -355,12 +386,49 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 24,
   },
+  transliterationText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
   meaningText: {
     fontSize: 14,
     color: colors.text,
     textAlign: 'center',
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  metadataContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  metadataChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: colors.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    ...shadows.small,
+  },
+  metadataLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    marginRight: 6,
+  },
+  metadataValue: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   shlokaActions: {
     flexDirection: 'row',
