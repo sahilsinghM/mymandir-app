@@ -1,5 +1,24 @@
 import { getEnvVar } from '../config/env';
 
+const sanitizeContent = (text: string, prompt?: string): string => {
+  if (typeof text !== 'string') {
+    return '';
+  }
+
+  let sanitized = text.replace(/\r/g, '').replace(/\\"/g, '"').trim();
+
+  if (prompt) {
+    const stripped = sanitized.replace(prompt, '').trim();
+    sanitized = stripped || sanitized;
+  }
+
+  if (!sanitized) {
+    sanitized = text.trim();
+  }
+
+  return sanitized;
+};
+
 export interface AIResponse {
   content: string;
   type: 'jyotish' | 'spiritual_quote' | 'shloka' | 'mantra_interpretation' | 'general';
@@ -179,7 +198,7 @@ export class FreeAIService {
       if (this.providers.huggingface.apiKey) {
         const response = await this.generateWithHuggingFace(prompt, 'mantra_interpretation');
         if (response) {
-          return response;
+          return this.parseGeneratedResponse(response, prompt, 'mantra_interpretation');
         }
       }
 
@@ -187,27 +206,15 @@ export class FreeAIService {
       if (this.providers.cohere.apiKey) {
         const response = await this.generateWithCohere(prompt, 'mantra_interpretation');
         if (response) {
-          return response;
+          return this.parseGeneratedResponse(response, prompt, 'mantra_interpretation');
         }
       }
 
       // Fallback to mock response
-      return {
-        content: 'This mantra carries deep spiritual significance and should be chanted with devotion and understanding.',
-        type: 'mantra_interpretation',
-        confidence: 0.5,
-        timestamp: new Date().toISOString(),
-        provider: 'mock'
-      };
+      return this.getMockMantraInterpretation();
     } catch (error) {
       console.error('Error generating mantra interpretation:', error);
-      return {
-        content: 'This mantra carries deep spiritual significance and should be chanted with devotion and understanding.',
-        type: 'mantra_interpretation',
-        confidence: 0.5,
-        timestamp: new Date().toISOString(),
-        provider: 'mock'
-      };
+      return this.getMockMantraInterpretation();
     }
   }
 
@@ -222,7 +229,7 @@ export class FreeAIService {
       if (this.providers.cohere.apiKey) {
         const response = await this.generateWithCohere(prompt, 'general');
         if (response) {
-          return response;
+          return this.parseGeneratedResponse(response, prompt, 'general');
         }
       }
 
@@ -230,27 +237,15 @@ export class FreeAIService {
       if (this.providers.huggingface.apiKey) {
         const response = await this.generateWithHuggingFace(prompt, 'general');
         if (response) {
-          return response;
+          return this.parseGeneratedResponse(response, prompt, 'general');
         }
       }
 
       // Fallback to mock response
-      return {
-        content: 'May your day be filled with peace, love, and spiritual growth.',
-        type: 'general',
-        confidence: 0.5,
-        timestamp: new Date().toISOString(),
-        provider: 'mock'
-      };
+      return this.getMockDailyGuidance();
     } catch (error) {
       console.error('Error generating daily guidance:', error);
-      return {
-        content: 'May your day be filled with peace, love, and spiritual growth.',
-        type: 'general',
-        confidence: 0.5,
-        timestamp: new Date().toISOString(),
-        provider: 'mock'
-      };
+      return this.getMockDailyGuidance();
     }
   }
 
@@ -279,9 +274,23 @@ export class FreeAIService {
 
       const data = await response.json();
       const content = Array.isArray(data) ? data[0]?.generated_text || data[0]?.text || prompt : data.generated_text || data.text || prompt;
+      const sanitizedContent = sanitizeContent(content, prompt);
+
+      if (!sanitizedContent || sanitizedContent === prompt.trim()) {
+        if (type === 'mantra_interpretation' || type === 'general') {
+          return {
+            content: sanitizedContent ?? '',
+            type: type as any,
+            confidence: 0.8,
+            timestamp: new Date().toISOString(),
+            provider: 'huggingface'
+          };
+        }
+        return null;
+      }
 
       return {
-        content: content.replace(prompt, '').trim(),
+        content: sanitizedContent,
         type: type as any,
         confidence: 0.8,
         timestamp: new Date().toISOString(),
@@ -316,9 +325,23 @@ export class FreeAIService {
 
       const data = await response.json();
       const content = data.generations?.[0]?.text || prompt;
+      const sanitizedContent = sanitizeContent(content, prompt);
+
+      if (!sanitizedContent || sanitizedContent === prompt.trim()) {
+        if (type === 'mantra_interpretation' || type === 'general') {
+          return {
+            content: sanitizedContent ?? '',
+            type: type as any,
+            confidence: 0.9,
+            timestamp: new Date().toISOString(),
+            provider: 'cohere'
+          };
+        }
+        return null;
+      }
 
       return {
-        content: content.trim(),
+        content: sanitizedContent,
         type: type as any,
         confidence: 0.9,
         timestamp: new Date().toISOString(),
@@ -357,9 +380,14 @@ export class FreeAIService {
 
       const data = await response.json();
       const content = data.content?.[0]?.text || prompt;
+      const sanitizedContent = sanitizeContent(content, prompt);
+
+      if (!sanitizedContent || sanitizedContent === prompt.trim()) {
+        return null;
+      }
 
       return {
-        content: content.trim(),
+        content: sanitizedContent,
         type: type as any,
         confidence: 0.95,
         timestamp: new Date().toISOString(),
@@ -383,9 +411,32 @@ export class FreeAIService {
   }
 
   private static parseQuoteResponse(content: string, category: string): SpiritualQuote {
-    const lines = content.split('\n').filter(line => line.trim());
-    const quote = lines[0]?.replace(/^["']|["']$/g, '') || content;
-    const author = lines[1]?.replace(/^- /, '') || 'Spiritual Wisdom';
+    const sanitized = sanitizeContent(content);
+    const lines = sanitized.split('\n').map(line => line.trim()).filter(Boolean);
+    let quote = lines[0] || sanitized;
+    let author = lines[1];
+
+    const inlineMatch = quote.match(/^(["?']?)(.*?)["?']?(?:\s*[-?]\s*(.*))?$/);
+    if (inlineMatch) {
+      quote = inlineMatch[2] || quote;
+      if (!author && inlineMatch[3]) {
+        author = inlineMatch[3];
+      }
+    }
+
+    quote = quote.replace(/^["?']/, '').replace(/["?']$/, '').trim();
+    author = (author || 'Spiritual Wisdom').replace(/^[-\s"?']*/, '').replace(/["?']$/, '').trim();
+
+    if ((!author || author.length === 0) && quote.includes(' - ')) {
+      const parts = quote.split(' - ');
+      if (parts.length > 1) {
+        quote = parts[0];
+        author = parts.slice(1).join(' - ');
+      }
+    }
+
+    quote = quote.replace(/^["'??]+/, '').replace(/["'??]+$/, '').trim();
+    author = (author || 'Spiritual Wisdom').replace(/^["'??]+/, '').replace(/["'??]+$/, '').trim();
 
     return {
       quote: quote.trim(),
@@ -393,6 +444,45 @@ export class FreeAIService {
       category: category as any,
       language: 'english'
     };
+  }
+
+  private static parseGeneratedResponse(response: AIResponse, prompt: string, type: AIResponse['type']): AIResponse {
+    const sanitized = sanitizeContent(response.content, prompt);
+    const trimmedPrompt = prompt.trim();
+
+    if (sanitized && sanitized !== trimmedPrompt) {
+      return {
+        ...response,
+        content: sanitized,
+        type,
+        timestamp: response.timestamp || new Date().toISOString(),
+      };
+    }
+
+    switch (type) {
+      case 'mantra_interpretation':
+        return {
+          ...response,
+          content: this.getDefaultGeneratedContent(type),
+          type,
+          timestamp: response.timestamp || new Date().toISOString(),
+        };
+      case 'general':
+        return {
+          ...response,
+          content: this.getDefaultGeneratedContent(type),
+          type,
+          timestamp: response.timestamp || new Date().toISOString(),
+        };
+      default:
+        return {
+          content: '',
+          type,
+          confidence: response.confidence ?? 0.5,
+          timestamp: new Date().toISOString(),
+          provider: 'mock'
+        };
+    }
   }
 
   private static parseShlokaResponse(content: string, emotion: string): ShlokaGeneration {
@@ -454,6 +544,34 @@ export class FreeAIService {
     };
   }
 
+  private static getMockMantraInterpretation(): AIResponse {
+    return {
+      content: 'This mantra carries deep spiritual significance and should be chanted with devotion and understanding.',
+      type: 'mantra_interpretation',
+      confidence: 0.5,
+      timestamp: new Date().toISOString(),
+      provider: 'mock'
+    };
+  }
+
+  private static getMockDailyGuidance(): AIResponse {
+    return {
+      content: 'May your day be filled with peace, love, and spiritual growth.',
+      type: 'general',
+      confidence: 0.5,
+      timestamp: new Date().toISOString(),
+      provider: 'mock'
+    };
+  }
+
+  private static getDefaultGeneratedContent(type: 'mantra_interpretation' | 'general'): string {
+    if (type === 'mantra_interpretation') {
+      return 'This mantra carries deep spiritual significance and should be chanted with devotion and understanding.';
+    }
+
+    return 'May your day be filled with peace, love, and spiritual growth.';
+  }
+
   private static getMockQuote(category: string): SpiritualQuote {
     const quotes = {
       daily_inspiration: {
@@ -495,24 +613,24 @@ export class FreeAIService {
   private static getMockShloka(emotion: string): ShlokaGeneration {
     const fallbackShlokas = {
       peace: {
-        sanskrit: 'शान्ति शान्ति शान्ति',
-        transliteration: 'śānti śānti śānti',
+        sanskrit: '\u0936\u093e\u0928\u094d\u0924\u093f \u0936\u093e\u0928\u094d\u0924\u093f \u0936\u093e\u0928\u094d\u0924\u093f',
+        transliteration: '\u015b\u0101nti \u015b\u0101nti \u015b\u0101nti',
         translation: 'Peace, peace, peace',
         meaning: 'A simple invocation for peace in mind, body, and spirit',
         deity: 'Universal Divine',
         category: 'meditation'
       },
       happiness: {
-        sanskrit: 'सुखं भवतु',
-        transliteration: 'sukhaṁ bhavatu',
+        sanskrit: '\u0938\u0941\u0916\u0902 \u092d\u0935\u0924\u0941',
+        transliteration: 'sukha\u1e41 bhavatu',
         translation: 'May there be happiness',
         meaning: 'A blessing for joy and contentment in all aspects of life',
         deity: 'Universal Divine',
         category: 'blessing'
       },
       strength: {
-        sanskrit: 'बलं भवतु',
-        transliteration: 'balaṁ bhavatu',
+        sanskrit: '\u092c\u0932\u0902 \u092d\u0935\u0924\u0941',
+        transliteration: 'bala\u1e41 bhavatu',
         translation: 'May there be strength',
         meaning: 'An invocation for inner and outer strength to face life\'s challenges',
         deity: 'Universal Divine',
