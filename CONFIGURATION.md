@@ -486,3 +486,4 @@ DEBUG=false
 ---
 
 This configuration guide should help you set up the MyMandir app successfully. For any questions or issues, please refer to the main README or create an issue in the repository.
+

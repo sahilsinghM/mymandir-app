@@ -1,4 +1,9 @@
-export { default as ThemedText } from './ThemedText';
-export { default as ThemedButton } from './ThemedButton';
-export { default as ThemedCard } from './ThemedCard';
-export { default as ThemedInput } from './ThemedInput';
+/**
+ * UI Components exports
+ */
+
+export { ThemedText } from './ThemedText';
+export { ThemedButton } from './ThemedButton';
+export { ThemedCard } from './ThemedCard';
+export { ThemedInput } from './ThemedInput';
+

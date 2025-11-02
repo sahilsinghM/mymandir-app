@@ -1,105 +1,89 @@
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import {
-  getAuth,
-  Auth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User,
-} from 'firebase/auth';
-import {
-  getFirestore,
-  Firestore,
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
-import {
-  getStorage,
-  FirebaseStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from 'firebase/storage';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { env } from '../config/env';
 
-// Firebase configuration
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
+
 const firebaseConfig = {
-  apiKey: env.firebaseApiKey,
-  authDomain: env.firebaseAuthDomain,
-  projectId: env.firebaseProjectId,
-  storageBucket: env.firebaseStorageBucket,
-  messagingSenderId: env.firebaseMessagingSenderId,
-  appId: env.firebaseAppId,
+  apiKey: env.firebase.apiKey,
+  authDomain: env.firebase.authDomain,
+  projectId: env.firebase.projectId,
+  storageBucket: env.firebase.storageBucket,
+  messagingSenderId: env.firebase.messagingSenderId,
+  appId: env.firebase.appId,
 };
 
 // Initialize Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let firestore: Firestore;
-let storage: FirebaseStorage;
+export const initializeFirebase = (): {
+  app: FirebaseApp;
+  auth: Auth;
+  db: Firestore;
+  storage: FirebaseStorage;
+} => {
+  if (!app) {
+    // Check if Firebase is already initialized
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApps()[0];
+    }
 
-try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  firestore = getFirestore(app);
-  storage = getStorage(app);
-} catch (error) {
-  console.error('Firebase initialization error:', error);
-  throw error;
-}
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  }
 
-// Export Firebase services
-export { app, auth, firestore, storage };
-
-// Export Firebase methods
-export {
-  // Auth
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-  firebaseSignOut as signOut,
-  onAuthStateChanged,
-  
-  // Firestore
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  onSnapshot,
-  Timestamp,
-  
-  // Storage
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
+  return {
+    app,
+    auth: auth!,
+    db: db!,
+    storage: storage!,
+  };
 };
 
-// Export types
-export type { User };
+// Get Firebase services (will initialize if needed)
+export const getFirebaseAuth = (): Auth => {
+  if (!auth) {
+    // Check if Firebase config is available
+    if (!env.firebase.apiKey || env.firebase.apiKey === 'your_firebase_api_key_here') {
+      throw new Error('Firebase is not configured. Please set up Firebase credentials.');
+    }
+    initializeFirebase();
+  }
+  return auth!;
+};
+
+export const getFirestoreDB = (): Firestore => {
+  if (!db) {
+    if (!env.firebase.apiKey || env.firebase.apiKey === 'your_firebase_api_key_here') {
+      throw new Error('Firebase is not configured. Please set up Firebase credentials.');
+    }
+    initializeFirebase();
+  }
+  return db!;
+};
+
+export const getFirebaseStorage = (): FirebaseStorage => {
+  if (!storage) {
+    if (!env.firebase.apiKey || env.firebase.apiKey === 'your_firebase_api_key_here') {
+      throw new Error('Firebase is not configured. Please set up Firebase credentials.');
+    }
+    initializeFirebase();
+  }
+  return storage!;
+};
+
+// Initialize on module load if config is available
+if (env.firebase.apiKey && env.firebase.apiKey !== 'your_firebase_api_key_here') {
+  try {
+    initializeFirebase();
+  } catch (error) {
+    console.warn('Firebase initialization failed:', error);
+  }
+}
 

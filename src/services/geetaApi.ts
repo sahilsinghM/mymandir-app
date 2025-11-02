@@ -1,108 +1,129 @@
-// Geeta API service for fetching Bhagavad Gita verses
-export interface GeetaVerse {
-  verse: string;
+/**
+ * Bhagavad Gita API Service
+ * Fetches verses from the Bhagavad Gita
+ */
+
+import { DailyShloka } from '../types';
+
+const GITA_API_BASE = 'https://bhagavad-gita-api.vercel.app';
+
+export interface GitaVerse {
+  chapter_number: number;
+  verse_number: number;
+  text: string;
+  transliteration: string;
+  word_meanings: string;
   translation: string;
-  chapter: number;
-  verseNumber: number;
-  transliteration?: string;
-  wordMeanings?: string;
+  commentary: string;
 }
 
-export class GeetaAPI {
-  private static readonly BASE_URL = 'https://bhagavadgita.io/api/v1';
-
-  /**
-   * Fetch a random verse from Bhagavad Gita
-   */
-  static async getRandomVerse(): Promise<GeetaVerse> {
-    try {
-      const response = await fetch(`${this.BASE_URL}/random`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching random verse:', error);
-      throw error;
+/**
+ * Get a random verse from Bhagavad Gita
+ */
+export const getRandomVerse = async (): Promise<DailyShloka> => {
+  try {
+    // Get random chapter (1-18)
+    const chapter = Math.floor(Math.random() * 18) + 1;
+    
+    // First, get chapter info to know how many verses it has
+    const chapterResponse = await fetch(`${GITA_API_BASE}/chapters/${chapter}`);
+    if (!chapterResponse.ok) {
+      throw new Error('Failed to fetch chapter info');
     }
-  }
-
-  /**
-   * Fetch a specific verse by chapter and verse number
-   */
-  static async getVerse(chapter: number, verseNumber: number): Promise<GeetaVerse> {
-    try {
-      const response = await fetch(`${this.BASE_URL}/chapter/${chapter}/verse/${verseNumber}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching verse:', error);
-      throw error;
+    const chapterData = await chapterResponse.json();
+    const verseCount = chapterData.verses_count;
+    
+    // Get random verse from that chapter
+    const verseNumber = Math.floor(Math.random() * verseCount) + 1;
+    
+    // Fetch the specific verse
+    const verseResponse = await fetch(
+      `${GITA_API_BASE}/chapters/${chapter}/verses/${verseNumber}`
+    );
+    
+    if (!verseResponse.ok) {
+      throw new Error('Failed to fetch verse');
     }
+    
+    const verseData: GitaVerse = await verseResponse.json();
+    
+    return {
+      id: `${chapter}-${verseNumber}`,
+      verse: verseData.text,
+      translation: verseData.translation,
+      meaning: verseData.commentary || verseData.word_meanings,
+      chapter: verseData.chapter_number,
+      verseNumber: verseData.verse_number,
+      date: new Date(),
+    };
+  } catch (error) {
+    console.error('Error fetching random verse:', error);
+    // Return a fallback verse
+    return getFallbackVerse();
   }
+};
 
-  /**
-   * Fetch all verses from a specific chapter
-   */
-  static async getChapter(chapter: number): Promise<GeetaVerse[]> {
-    try {
-      const response = await fetch(`${this.BASE_URL}/chapter/${chapter}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data.verses || [];
-    } catch (error) {
-      console.error('Error fetching chapter:', error);
-      throw error;
+/**
+ * Get a specific verse by chapter and verse number
+ */
+export const getVerse = async (
+  chapter: number,
+  verse: number
+): Promise<DailyShloka> => {
+  try {
+    const response = await fetch(
+      `${GITA_API_BASE}/chapters/${chapter}/verses/${verse}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch verse');
     }
+    
+    const verseData: GitaVerse = await response.json();
+    
+    return {
+      id: `${chapter}-${verse}`,
+      verse: verseData.text,
+      translation: verseData.translation,
+      meaning: verseData.commentary || verseData.word_meanings,
+      chapter: verseData.chapter_number,
+      verseNumber: verseData.verse_number,
+      date: new Date(),
+    };
+  } catch (error) {
+    console.error('Error fetching verse:', error);
+    return getFallbackVerse();
   }
+};
 
-  /**
-   * Search verses by keyword
-   */
-  static async searchVerses(keyword: string): Promise<GeetaVerse[]> {
-    try {
-      const response = await fetch(`${this.BASE_URL}/search?q=${encodeURIComponent(keyword)}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data.results || [];
-    } catch (error) {
-      console.error('Error searching verses:', error);
-      throw error;
-    }
-  }
+/**
+ * Fallback verse when API fails
+ */
+const getFallbackVerse = (): DailyShloka => {
+  return {
+    id: 'fallback-1',
+    verse: 'योगस्थः कुरु कर्माणि सङ्गं त्यक्त्वा धनञ्जय। सिद्ध्यसिद्ध्योः समो भूत्वा समत्वं योग उच्यते॥',
+    translation: 'Perform your duty equipoised, O Arjuna, abandoning all attachment to success or failure. Such equanimity is called yoga.',
+    meaning: 'Be steady in yoga, perform your duties, and abandon all attachment to success or failure. This evenness of mind is called yoga.',
+    chapter: 2,
+    verseNumber: 48,
+    date: new Date(),
+  };
+};
 
-  /**
-   * Get verse with transliteration and word meanings
-   */
-  static async getVerseWithDetails(chapter: number, verseNumber: number): Promise<GeetaVerse> {
-    try {
-      const response = await fetch(`${this.BASE_URL}/chapter/${chapter}/verse/${verseNumber}/transliteration`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching verse details:', error);
-      throw error;
+/**
+ * Get chapter information
+ */
+export const getChapter = async (chapterNumber: number) => {
+  try {
+    const response = await fetch(`${GITA_API_BASE}/chapters/${chapterNumber}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch chapter');
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching chapter:', error);
+    return null;
   }
-}
+};
+

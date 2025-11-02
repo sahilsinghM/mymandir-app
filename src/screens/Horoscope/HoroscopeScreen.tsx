@@ -1,483 +1,215 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, shadows } from '../../theme/colors';
-import { AstroService, Horoscope, Panchang, AuspiciousTimings } from '../../services/astroService';
+import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { theme } from '../../theme/theme';
+import { ThemedText, ThemedCard, ThemedButton } from '../../components/ui';
+import { Horoscope, ZodiacSign } from '../../types';
+import { getDailyHoroscope, getWeeklyHoroscope, getMonthlyHoroscope } from '../../services/astroService';
 
-const HoroscopeScreen: React.FC = () => {
-  const [selectedSign, setSelectedSign] = useState('Aries');
+const zodiacSigns: ZodiacSign[] = [
+  'Aries',
+  'Taurus',
+  'Gemini',
+  'Cancer',
+  'Leo',
+  'Virgo',
+  'Libra',
+  'Scorpio',
+  'Sagittarius',
+  'Capricorn',
+  'Aquarius',
+  'Pisces',
+];
+
+export const HoroscopeScreen: React.FC = () => {
+  const [selectedSign, setSelectedSign] = useState<ZodiacSign>('Aries');
+  const [horoscopeType, setHoroscopeType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [horoscope, setHoroscope] = useState<Horoscope | null>(null);
-  const [panchang, setPanchang] = useState<Panchang | null>(null);
-  const [timings, setTimings] = useState<AuspiciousTimings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'horoscope' | 'panchang'>('horoscope');
-
-  const zodiacSigns = AstroService.getZodiacSigns();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, [selectedSign]);
+    loadHoroscope();
+  }, [selectedSign, horoscopeType]);
 
-  const loadData = async () => {
+  const loadHoroscope = async () => {
     try {
       setLoading(true);
-      const [horoscopeData, panchangData, timingsData] = await Promise.all([
-        AstroService.getDailyHoroscope(selectedSign),
-        AstroService.getPanchang(),
-        AstroService.getAuspiciousTimings()
-      ]);
-      
-      setHoroscope(horoscopeData);
-      setPanchang(panchangData);
-      setTimings(timingsData);
-    } catch (error) {
-      console.error('Error loading astrology data:', error);
+      setError(null);
+      let data: Horoscope;
+      switch (horoscopeType) {
+        case 'daily':
+          data = await getDailyHoroscope(selectedSign);
+          break;
+        case 'weekly':
+          data = await getWeeklyHoroscope(selectedSign);
+          break;
+        case 'monthly':
+          data = await getMonthlyHoroscope(selectedSign);
+          break;
+      }
+      setHoroscope(data);
+    } catch (error: any) {
+      console.error('Error loading horoscope:', error);
+      setError(error.message || 'Failed to load horoscope');
+      // Note: The service functions already return fallback data on error,
+      // so we should still have a horoscope displayed
     } finally {
       setLoading(false);
     }
   };
 
-  const renderHoroscopeTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      {/* Zodiac Sign Selector */}
-      <View style={styles.signSelector}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <ThemedCard style={styles.pickerCard}>
+        <ThemedText variant="label" style={styles.label}>
+          Select Your Zodiac Sign
+        </ThemedText>
+        <View style={styles.signsGrid}>
           {zodiacSigns.map((sign) => (
-            <TouchableOpacity
+            <ThemedButton
               key={sign}
-              style={[
-                styles.signButton,
-                selectedSign === sign && styles.selectedSignButton
-              ]}
+              title={sign}
+              variant={selectedSign === sign ? 'primary' : 'outline'}
+              size="sm"
               onPress={() => setSelectedSign(sign)}
-            >
-              <Text style={[
-                styles.signButtonText,
-                selectedSign === sign && styles.selectedSignButtonText
-              ]}>
-                {sign}
-              </Text>
-            </TouchableOpacity>
+              style={styles.signButton}
+            />
           ))}
-        </ScrollView>
+        </View>
+      </ThemedCard>
+
+      <View style={styles.typeButtons}>
+        <ThemedButton
+          title="Daily"
+          variant={horoscopeType === 'daily' ? 'primary' : 'outline'}
+          size="md"
+          onPress={() => setHoroscopeType('daily')}
+          style={styles.typeButton}
+        />
+        <ThemedButton
+          title="Weekly"
+          variant={horoscopeType === 'weekly' ? 'primary' : 'outline'}
+          size="md"
+          onPress={() => setHoroscopeType('weekly')}
+          style={styles.typeButton}
+        />
+        <ThemedButton
+          title="Monthly"
+          variant={horoscopeType === 'monthly' ? 'primary' : 'outline'}
+          size="md"
+          onPress={() => setHoroscopeType('monthly')}
+          style={styles.typeButton}
+        />
       </View>
 
-      {/* Horoscope Content */}
-      {horoscope && (
-        <View style={styles.horoscopeCard}>
-          <LinearGradient
-            colors={[colors.cardBackground, colors.background]}
-            style={styles.cardGradient}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Daily Horoscope</Text>
-              <Text style={styles.cardSubtitle}>{horoscope.date}</Text>
-            </View>
-
-            <Text style={styles.prediction}>{horoscope.prediction}</Text>
-
-            <View style={styles.detailsGrid}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Mood</Text>
-                <Text style={styles.detailValue}>{horoscope.mood}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Compatibility</Text>
-                <Text style={styles.detailValue}>{horoscope.compatibility}</Text>
-              </View>
-            </View>
-
-            <View style={styles.luckySection}>
-              <Text style={styles.luckyTitle}>Lucky Numbers</Text>
-              <View style={styles.luckyNumbers}>
-                {horoscope.luckyNumbers.map((number, index) => (
-                  <View key={index} style={styles.luckyNumber}>
-                    <Text style={styles.luckyNumberText}>{number}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.luckySection}>
-              <Text style={styles.luckyTitle}>Lucky Colors</Text>
-              <View style={styles.luckyColors}>
-                {horoscope.luckyColors.map((color, index) => (
-                  <View key={index} style={styles.luckyColor}>
-                    <Text style={styles.luckyColorText}>{color}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-      )}
-    </ScrollView>
-  );
-
-  const renderPanchangTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      {/* Panchang Card */}
-      {panchang && (
-        <View style={styles.panchangCard}>
-          <LinearGradient
-            colors={[colors.cardBackground, colors.background]}
-            style={styles.cardGradient}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Panchang</Text>
-              <Text style={styles.cardSubtitle}>{panchang.date}</Text>
-            </View>
-
-            <View style={styles.panchangGrid}>
-              <View style={styles.panchangItem}>
-                <Text style={styles.panchangLabel}>Tithi</Text>
-                <Text style={styles.panchangValue}>{panchang.tithi}</Text>
-              </View>
-              <View style={styles.panchangItem}>
-                <Text style={styles.panchangLabel}>Nakshatra</Text>
-                <Text style={styles.panchangValue}>{panchang.nakshatra}</Text>
-              </View>
-              <View style={styles.panchangItem}>
-                <Text style={styles.panchangLabel}>Yoga</Text>
-                <Text style={styles.panchangValue}>{panchang.yoga}</Text>
-              </View>
-              <View style={styles.panchangItem}>
-                <Text style={styles.panchangLabel}>Karana</Text>
-                <Text style={styles.panchangValue}>{panchang.karana}</Text>
-              </View>
-              <View style={styles.panchangItem}>
-                <Text style={styles.panchangLabel}>Paksha</Text>
-                <Text style={styles.panchangValue}>{panchang.paksha}</Text>
-              </View>
-              <View style={styles.panchangItem}>
-                <Text style={styles.panchangLabel}>Ritu</Text>
-                <Text style={styles.panchangValue}>{panchang.ritu}</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-      )}
-
-      {/* Auspicious Timings */}
-      {timings && (
-        <View style={styles.timingsCard}>
-          <LinearGradient
-            colors={[colors.cardBackground, colors.background]}
-            style={styles.cardGradient}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Auspicious Timings</Text>
-            </View>
-
-            <View style={styles.timingsGrid}>
-              <View style={styles.timingItem}>
-                <Ionicons name="sunny" size={20} color={colors.primary} />
-                <Text style={styles.timingLabel}>Sunrise</Text>
-                <Text style={styles.timingValue}>{timings.sunrise}</Text>
-              </View>
-              <View style={styles.timingItem}>
-                <Ionicons name="moon" size={20} color={colors.primary} />
-                <Text style={styles.timingLabel}>Sunset</Text>
-                <Text style={styles.timingValue}>{timings.sunset}</Text>
-              </View>
-              <View style={styles.timingItem}>
-                <Ionicons name="moon-outline" size={20} color={colors.primary} />
-                <Text style={styles.timingLabel}>Moonrise</Text>
-                <Text style={styles.timingValue}>{timings.moonrise}</Text>
-              </View>
-              <View style={styles.timingItem}>
-                <Ionicons name="moon" size={20} color={colors.primary} />
-                <Text style={styles.timingLabel}>Moonset</Text>
-                <Text style={styles.timingValue}>{timings.moonset}</Text>
-              </View>
-              <View style={styles.timingItem}>
-                <Ionicons name="time" size={20} color={colors.primary} />
-                <Text style={styles.timingLabel}>Brahma Muhurat</Text>
-                <Text style={styles.timingValue}>{timings.brahmaMuhurat}</Text>
-              </View>
-              <View style={styles.timingItem}>
-                <Ionicons name="time-outline" size={20} color={colors.primary} />
-                <Text style={styles.timingLabel}>Abhijit Muhurat</Text>
-                <Text style={styles.timingValue}>{timings.abhijitMuhurat}</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-      )}
-    </ScrollView>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={[colors.gradientLight, colors.background]}
-          style={styles.gradient}
-        >
+      {loading ? (
+        <ThemedCard>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading astrology data...</Text>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <ThemedText variant="body" color="textSecondary" style={styles.loadingText}>
+              Loading horoscope...
+            </ThemedText>
           </View>
-        </LinearGradient>
-      </SafeAreaView>
-    );
-  }
+        </ThemedCard>
+      ) : horoscope ? (
+        <ThemedCard style={styles.horoscopeCard}>
+          <View style={styles.header}>
+            <ThemedText variant="h2" color="primary">
+              {horoscope.sign}
+            </ThemedText>
+            <ThemedText variant="caption" color="textSecondary">
+              {horoscopeType.charAt(0).toUpperCase() + horoscopeType.slice(1)} Horoscope
+            </ThemedText>
+            <ThemedText variant="caption" color="textLight">
+              {horoscope.date}
+            </ThemedText>
+          </View>
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[colors.gradientLight, colors.background]}
-        style={styles.gradient}
-      >
-        {/* Tab Selector */}
-        <View style={styles.tabSelector}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'horoscope' && styles.activeTabButton]}
-            onPress={() => setActiveTab('horoscope')}
-          >
-            <Text style={[styles.tabButtonText, activeTab === 'horoscope' && styles.activeTabButtonText]}>
-              Horoscope
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'panchang' && styles.activeTabButton]}
-            onPress={() => setActiveTab('panchang')}
-          >
-            <Text style={[styles.tabButtonText, activeTab === 'panchang' && styles.activeTabButtonText]}>
-              Panchang
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Content */}
-        {activeTab === 'horoscope' ? renderHoroscopeTab() : renderPanchangTab()}
-      </LinearGradient>
-    </SafeAreaView>
+          <View style={styles.predictionContainer}>
+            <ThemedText variant="body" style={styles.prediction}>
+              {horoscope.prediction}
+            </ThemedText>
+          </View>
+          {error && (
+            <ThemedText variant="caption" color="textSecondary" style={styles.errorText}>
+              Note: Using fallback data. API may be unavailable.
+            </ThemedText>
+          )}
+        </ThemedCard>
+      ) : (
+        <ThemedCard>
+          <ThemedText variant="body" color="error">
+            Unable to load horoscope. Please try again.
+          </ThemedText>
+        </ThemedCard>
+      )}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
   },
-  gradient: {
-    flex: 1,
+  content: {
+    padding: theme.spacing.lg,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  pickerCard: {
+    marginBottom: theme.spacing.lg,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.textSecondary,
+  label: {
+    marginBottom: theme.spacing.sm,
   },
-  tabSelector: {
-    flexDirection: 'row',
-    margin: 16,
-    backgroundColor: colors.background,
-    borderRadius: 25,
-    padding: 4,
-    ...shadows.small,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  activeTabButton: {
-    backgroundColor: colors.primary,
-  },
-  tabButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  activeTabButtonText: {
-    color: colors.secondary,
-  },
-  tabContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  signSelector: {
-    marginBottom: 20,
-  },
-  signButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginRight: 12,
-    backgroundColor: colors.background,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.small,
-  },
-  selectedSignButton: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  signButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  selectedSignButtonText: {
-    color: colors.secondary,
-  },
-  horoscopeCard: {
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...shadows.medium,
-  },
-  panchangCard: {
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...shadows.medium,
-  },
-  timingsCard: {
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...shadows.medium,
-  },
-  cardGradient: {
-    padding: 20,
-  },
-  cardHeader: {
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  prediction: {
-    fontSize: 16,
-    color: colors.text,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  detailsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  detailItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  detailValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  luckySection: {
-    marginBottom: 16,
-  },
-  luckyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  luckyNumbers: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  luckyNumber: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  luckyNumberText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.secondary,
-  },
-  luckyColors: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  luckyColor: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  luckyColorText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  panchangGrid: {
+  signsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: theme.spacing.sm,
   },
-  panchangItem: {
-    width: '48%',
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    ...shadows.small,
+  signButton: {
+    flex: 1,
+    minWidth: '30%',
   },
-  panchangLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  panchangValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  timingsGrid: {
-    gap: 16,
-  },
-  timingItem: {
+  typeButtons: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 12,
-    ...shadows.small,
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
-  timingLabel: {
-    fontSize: 16,
-    color: colors.text,
-    marginLeft: 12,
+  typeButton: {
     flex: 1,
   },
-  timingValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.primary,
+  horoscopeCard: {
+    marginTop: theme.spacing.md,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: theme.spacing.md,
+  },
+  predictionContainer: {
+    marginTop: theme.spacing.md,
+  },
+  prediction: {
+    lineHeight: theme.typography.sizes.md * theme.typography.lineHeights.relaxed,
+    textAlign: 'justify',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+  },
+  errorText: {
+    marginTop: theme.spacing.sm,
+    fontStyle: 'italic',
   },
 });
 
-export default HoroscopeScreen;

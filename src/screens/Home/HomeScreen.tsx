@@ -1,95 +1,73 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, shadows } from '../../theme/colors';
-import DailyShlokaCard from '../../components/home/DailyShlokaCard';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
+import { theme } from '../../theme/theme';
+import { ThemedText } from '../../components/ui';
+import { DailyShlokaCard } from '../../components/home/DailyShlokaCard';
 
-const HomeScreen: React.FC = () => {
-  const handleSaveVerse = (verse: any) => {
-    // TODO: Implement save to favorites functionality
-    console.log('Saving verse:', verse);
-  };
+export const HomeScreen: React.FC = () => {
+  const { user } = useAuth();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Refresh will be handled by DailyShlokaCard
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[colors.gradientLight, colors.background]}
-        style={styles.gradient}
-      >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
-            <Text style={styles.title}>Daily Devotion</Text>
-            <Text style={styles.subtitle}>Your spiritual journey begins here</Text>
-            
-            {/* Daily Shloka Card */}
-            <DailyShlokaCard onSave={handleSaveVerse} />
-            
-            <View style={styles.featuresContainer}>
-              <Text style={styles.featuresTitle}>What you'll find here:</Text>
-              <View style={styles.featuresList}>
-                <Text style={styles.feature}>• Daily Bhagavad Gita verses</Text>
-                <Text style={styles.feature}>• AI-generated spiritual quotes</Text>
-                <Text style={styles.feature}>• Personalized content based on your deity preference</Text>
-                <Text style={styles.feature}>• Share and save your favorite verses</Text>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.header}>
+        <ThemedText variant="h1" color="primary">
+          MyMandir
+        </ThemedText>
+        {user && (
+          <ThemedText variant="body" color="textSecondary">
+            Welcome, {user.displayName || 'Devotee'}
+          </ThemedText>
+        )}
+      </View>
+
+      <DailyShlokaCard />
+
+      {/* Placeholder for additional home content */}
+      <View style={styles.section}>
+        <ThemedText variant="h3" style={styles.sectionTitle}>
+          Explore More
+        </ThemedText>
+        <ThemedText variant="body" color="textSecondary">
+          Discover horoscopes, mantras, AI Jyotish, and more from the navigation below.
+        </ThemedText>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: theme.colors.background,
   },
   content: {
-    padding: 20,
+    padding: theme.spacing.lg,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.primary,
-    textAlign: 'center',
-    marginBottom: 10,
+  header: {
+    marginBottom: theme.spacing.xl,
+    alignItems: 'center',
   },
-  subtitle: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 30,
+  section: {
+    marginTop: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
-  featuresContainer: {
-    marginTop: 20,
-    padding: 20,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    ...shadows.small,
-  },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  featuresList: {
-    alignItems: 'flex-start',
-  },
-  feature: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 10,
-    lineHeight: 24,
+  sectionTitle: {
+    marginBottom: theme.spacing.sm,
   },
 });
 
-export default HomeScreen;

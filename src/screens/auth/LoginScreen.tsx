@@ -1,304 +1,207 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../contexts/AuthContext';
+import { theme } from '../../theme/theme';
+import { ThemedText, ThemedButton, ThemedInput, ThemedCard } from '../../components/ui';
 
-const { width } = Dimensions.get('window');
+type RootStackParamList = {
+  Welcome: undefined;
+  Login: undefined;
+};
+
+type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 interface LoginScreenProps {
-  navigation: {
-    navigate: (screen: string) => void;
-    goBack: () => void;
-  };
+  navigation: LoginScreenNavigationProp;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { signInWithGoogle, signInWithPhone, loading } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { signIn, signUp, signInAsGuest } = useAuth();
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-      navigation.navigate('Onboarding');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign in with Google');
-    }
-  };
-
-  const handlePhoneSignIn = async () => {
-    if (!phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     try {
-      await signInWithPhone(phoneNumber);
-      navigation.navigate('Onboarding');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign in with phone');
+      setLoading(true);
+      if (isSignUp) {
+        await signUp(email, password);
+        Alert.alert('Success', 'Account created successfully!');
+      } else {
+        await signIn(email, password);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    if (showPhoneInput) {
-      setShowPhoneInput(false);
-      setPhoneNumber('');
-    } else {
-      navigation.goBack();
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      // TODO: Implement Google sign-in
+      Alert.alert('Info', 'Google sign-in coming soon');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Google sign-in failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#FF9933', '#FFD700', '#FFFFFF']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <View style={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color="#FF9933" />
-                <Text style={styles.backText}>Back</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={styles.content}>
+          <ThemedText variant="h2" style={styles.title}>
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
+          </ThemedText>
+          <ThemedText variant="body" color="textSecondary" style={styles.subtitle}>
+            {isSignUp
+              ? 'Sign up to start your spiritual journey'
+              : 'Sign in to continue your journey'}
+          </ThemedText>
 
-            {/* Title */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Sign In</Text>
-              <Text style={styles.subtitle}>
-                Choose your preferred sign-in method
-              </Text>
-            </View>
+          <ThemedCard style={styles.formCard}>
+            <ThemedInput
+              label="Email"
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
 
-            {/* Sign In Options */}
-            <View style={styles.optionsContainer}>
-              {!showPhoneInput ? (
-                <>
-                  {/* Google Sign In */}
-                  <TouchableOpacity
-                    style={styles.googleButton}
-                    onPress={handleGoogleSignIn}
-                    disabled={loading}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={['#4285F4', '#34A853']}
-                      style={styles.buttonGradient}
-                    >
-                      <Ionicons name="logo-google" size={24} color="#FFFFFF" />
-                      <Text style={styles.buttonText}>Sign in with Google</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+            <ThemedInput
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete={isSignUp ? 'password-new' : 'password'}
+            />
 
-                  {/* Phone Sign In */}
-                  <TouchableOpacity
-                    style={styles.phoneButton}
-                    onPress={() => setShowPhoneInput(true)}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={['#FF9933', '#FFD700']}
-                      style={styles.buttonGradient}
-                    >
-                      <Ionicons name="call" size={24} color="#FFFFFF" />
-                      <Text style={styles.buttonText}>Sign in with Phone</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  {/* Phone Input */}
-                  <View style={styles.phoneInputContainer}>
-                    <Text style={styles.inputLabel}>Enter your phone number</Text>
-                    <TextInput
-                      style={styles.phoneInput}
-                      placeholder="+91 9876543210"
-                      value={phoneNumber}
-                      onChangeText={setPhoneNumber}
-                      keyboardType="phone-pad"
-                      autoFocus
-                    />
-                    <TouchableOpacity
-                      style={styles.continueButton}
-                      onPress={handlePhoneSignIn}
-                      disabled={loading || !phoneNumber.trim()}
-                      activeOpacity={0.8}
-                    >
-                      <LinearGradient
-                        colors={['#FF9933', '#FFD700']}
-                        style={styles.buttonGradient}
-                      >
-                        <Text style={styles.buttonText}>Continue</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </View>
+            <ThemedButton
+              title={isSignUp ? 'Sign Up' : 'Sign In'}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              onPress={handleSubmit}
+              style={styles.submitButton}
+            />
 
-            {/* Loading Indicator */}
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Signing in...</Text>
-              </View>
-            )}
+            <ThemedButton
+              title={`Sign ${isSignUp ? 'In' : 'Up'} Instead`}
+              variant="ghost"
+              size="md"
+              fullWidth
+              onPress={() => setIsSignUp(!isSignUp)}
+              style={styles.switchButton}
+            />
+          </ThemedCard>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <ThemedText variant="caption" color="textSecondary">
+              OR
+            </ThemedText>
+            <View style={styles.dividerLine} />
           </View>
-        </KeyboardAvoidingView>
-      </LinearGradient>
-    </SafeAreaView>
+
+          <ThemedButton
+            title="Continue with Google"
+            variant="outline"
+            size="lg"
+            fullWidth
+            onPress={handleGoogleSignIn}
+            disabled={loading}
+          />
+
+          <ThemedButton
+            title="Continue as Guest"
+            variant="ghost"
+            size="md"
+            fullWidth
+            onPress={signInAsGuest}
+            style={styles.guestButton}
+          />
+          
+          <ThemedButton
+            title="Back to Welcome"
+            variant="ghost"
+            size="md"
+            fullWidth
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
   },
-  gradient: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 30,
+    padding: theme.spacing.xl,
     justifyContent: 'center',
-  },
-  header: {
-    position: 'absolute',
-    top: 20,
-    left: 30,
-    zIndex: 1,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: '#FF9933',
-    fontWeight: '500',
-  },
-  titleContainer: {
-    alignItems: 'center',
-    marginBottom: 50,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FF9933',
-    marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
     textAlign: 'center',
+    marginBottom: theme.spacing.xl,
   },
-  optionsContainer: {
-    gap: 20,
+  formCard: {
+    marginBottom: theme.spacing.lg,
   },
-  googleButton: {
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: '#4285F4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  submitButton: {
+    marginTop: theme.spacing.md,
   },
-  phoneButton: {
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: '#FF9933',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  switchButton: {
+    marginTop: theme.spacing.sm,
   },
-  buttonGradient: {
-    flex: 1,
+  divider: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    marginVertical: theme.spacing.lg,
   },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
   },
-  phoneInputContainer: {
-    gap: 20,
+  guestButton: {
+    marginTop: theme.spacing.md,
   },
-  inputLabel: {
-    fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  phoneInput: {
-    height: 60,
-    borderWidth: 2,
-    borderColor: '#FF9933',
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    fontSize: 18,
-    textAlign: 'center',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#FF9933',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  continueButton: {
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: '#FF9933',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    marginTop: 30,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontStyle: 'italic',
+  backButton: {
+    marginTop: theme.spacing.sm,
   },
 });
 
-export default LoginScreen;

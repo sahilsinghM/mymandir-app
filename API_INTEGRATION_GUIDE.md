@@ -245,3 +245,4 @@ npm start
 ---
 
 This comprehensive API integration provides a cost-effective solution for MyMandir with multiple fallback options and room for growth. The free tier APIs can handle initial user load, while paid APIs can be added as the user base grows.
+

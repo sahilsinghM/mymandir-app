@@ -1,157 +1,147 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, StyleSheet } from 'react-native';
+import { theme } from '../theme/theme';
+import { ThemedText } from '../components/ui';
+import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
+import { LoginScreen } from '../screens/auth/LoginScreen';
+import { HomeScreen } from '../screens/Home/HomeScreen';
+import { HoroscopeScreen } from '../screens/Horoscope/HoroscopeScreen';
+import { AIJyotishScreen } from '../screens/AIJyotish/AIJyotishScreen';
+import { MantraPlayerScreen } from '../screens/MantraPlayer/MantraPlayerScreen';
+import { ProfileScreen } from '../screens/Profile/ProfileScreen';
 import { useAuth } from '../contexts/AuthContext';
+import { RootStackParamList, MainTabParamList } from '../types/navigation';
 
-// Import screens
-import WelcomeScreen from '../screens/auth/WelcomeScreen';
-import LoginScreen from '../screens/auth/LoginScreen';
-import OnboardingScreen from '../screens/auth/OnboardingScreen';
-import HomeScreen from '../screens/Home/HomeScreen';
-import HoroscopeScreen from '../screens/Horoscope/HoroscopeScreen';
-import AIJyotishScreen from '../screens/AIJyotish/AIJyotishScreen';
-import MantraPlayerScreen from '../screens/MantraPlayer/MantraPlayerScreen';
-import TempleFeedScreen from '../screens/TempleFeed/TempleFeedScreen';
-import ShlokaGeneratorScreen from '../screens/ShlokaGenerator/ShlokaGeneratorScreen';
-import ProfileScreen from '../screens/Profile/ProfileScreen';
+const Stack = createStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// Import theme
-import { colors } from '../theme/colors';
+// Main Tab Navigator for authenticated users
+const MainTabs = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.primary,
+        },
+        headerTintColor: theme.colors.textInverse,
+        headerTitleStyle: {
+          fontWeight: theme.typography.weights.bold,
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarStyle: {
+          borderTopColor: theme.colors.border,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Home',
+          tabBarLabel: 'Home',
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="Horoscope"
+        component={HoroscopeScreen}
+        options={{
+          title: 'Horoscope',
+          tabBarLabel: 'Horoscope',
+          headerShown: true,
+        }}
+      />
+      <Tab.Screen
+        name="AIJyotish"
+        component={AIJyotishScreen}
+        options={{
+          title: 'AI Jyotish',
+          tabBarLabel: 'AI Jyotish',
+        }}
+      />
+      <Tab.Screen
+        name="MantraPlayer"
+        component={MantraPlayerScreen}
+        options={{
+          title: 'Mantras',
+          tabBarLabel: 'Mantras',
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
 
-const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
-
-// Auth Stack Navigator
-const AuthStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerShown: false,
-      cardStyle: { backgroundColor: colors.background },
-    }}
-  >
-    <Stack.Screen name="Welcome" component={WelcomeScreen} />
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-  </Stack.Navigator>
-);
-
-// Main Tab Navigator
-const MainTabs = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused, color, size }) => {
-        let iconName: keyof typeof Ionicons.glyphMap;
-
-        switch (route.name) {
-          case 'Home':
-            iconName = focused ? 'home' : 'home-outline';
-            break;
-          case 'Horoscope':
-            iconName = focused ? 'star' : 'star-outline';
-            break;
-          case 'AIJyotish':
-            iconName = focused ? 'chatbubble' : 'chatbubble-outline';
-            break;
-          case 'Mantra':
-            iconName = focused ? 'musical-notes' : 'musical-notes-outline';
-            break;
-          case 'Temple':
-            iconName = focused ? 'home' : 'home-outline';
-            break;
-          case 'Shloka':
-            iconName = focused ? 'book' : 'book-outline';
-            break;
-          case 'Profile':
-            iconName = focused ? 'person' : 'person-outline';
-            break;
-          default:
-            iconName = 'help-outline';
-        }
-
-        return <Ionicons name={iconName} size={size} color={color} />;
-      },
-      tabBarActiveTintColor: colors.primary,
-      tabBarInactiveTintColor: colors.textSecondary,
-      tabBarStyle: {
-        backgroundColor: colors.surface,
-        borderTopColor: colors.border,
-        borderTopWidth: 1,
-        paddingBottom: 5,
-        paddingTop: 5,
-        height: 60,
-      },
-      tabBarLabelStyle: {
-        fontSize: 12,
-        fontWeight: '500',
-      },
-      headerStyle: {
-        backgroundColor: colors.primary,
-      },
-      headerTintColor: colors.secondary,
-      headerTitleStyle: {
-        fontWeight: 'bold',
-        fontSize: 18,
-      },
-    })}
-  >
-    <Tab.Screen 
-      name="Home" 
-      component={HomeScreen}
-      options={{ title: 'Daily Devotion' }}
-    />
-    <Tab.Screen 
-      name="Horoscope" 
-      component={HoroscopeScreen}
-      options={{ title: 'Horoscope' }}
-    />
-    <Tab.Screen 
-      name="AIJyotish" 
-      component={AIJyotishScreen}
-      options={{ title: 'AI Jyotish' }}
-    />
-    <Tab.Screen 
-      name="Mantra" 
-      component={MantraPlayerScreen}
-      options={{ title: 'Mantra Player' }}
-    />
-    <Tab.Screen 
-      name="Temple" 
-      component={TempleFeedScreen}
-      options={{ title: 'Temple' }}
-    />
-    <Tab.Screen 
-      name="Shloka" 
-      component={ShlokaGeneratorScreen}
-      options={{ title: 'Shloka' }}
-    />
-    <Tab.Screen 
-      name="Profile" 
-      component={ProfileScreen}
-      options={{ title: 'Profile' }}
-    />
-  </Tab.Navigator>
-);
-
-// Main App Navigator
+// Root Stack Navigator - handles auth flow
 export const AppNavigator: React.FC = () => {
-  const { user, userProfile, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
-    // TODO: Add loading screen
-    return null;
+    return (
+      <View style={styles.placeholder}>
+        <ThemedText variant="body">Loading...</ThemedText>
+      </View>
+    );
   }
 
   return (
     <NavigationContainer>
-      {user && userProfile ? (
-        <MainTabs />
-      ) : (
-        <AuthStack />
-      )}
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: theme.colors.primary,
+          },
+          headerTintColor: theme.colors.textInverse,
+          headerTitleStyle: {
+            fontWeight: theme.typography.weights.bold,
+          },
+        }}
+      >
+        {!user ? (
+          <>
+            <Stack.Screen
+              name="Welcome"
+              component={WelcomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ 
+                title: 'Sign In',
+                headerShown: true,
+              }}
+            />
+          </>
+        ) : (
+          <Stack.Screen
+            name="Main"
+            component={MainTabs}
+            options={{ headerShown: false }}
+          />
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
-export default AppNavigator;
+const styles = StyleSheet.create({
+  placeholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+});
+

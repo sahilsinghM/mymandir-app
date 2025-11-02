@@ -1,242 +1,140 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, shadows } from '../../theme/colors';
-import { GeetaAPI, GeetaVerse } from '../../services/geetaApi';
-import * as Sharing from 'expo-sharing';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { ThemedCard, ThemedText } from '../ui';
+import { theme } from '../../theme/theme';
+import { DailyShloka } from '../../types';
+import { getRandomVerse } from '../../services/geetaApi';
 
-interface DailyShlokaCardProps {
-  onSave?: (verse: GeetaVerse) => void;
-}
-
-export const DailyShlokaCard: React.FC<DailyShlokaCardProps> = ({ onSave }) => {
-  const [verse, setVerse] = useState<GeetaVerse | null>(null);
+export const DailyShlokaCard: React.FC = () => {
+  const [shloka, setShloka] = useState<DailyShloka | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDailyVerse();
+    loadShloka();
   }, []);
 
-  const loadDailyVerse = async () => {
+  const loadShloka = async () => {
     try {
       setLoading(true);
       setError(null);
-      const randomVerse = await GeetaAPI.getRandomVerse();
-      setVerse(randomVerse);
-    } catch (err) {
-      setError('Failed to load verse');
-      console.error('Error loading verse:', err);
+      const verse = await getRandomVerse();
+      setShloka(verse);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load verse');
+      console.error('Error loading shloka:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleShare = async () => {
-    if (!verse) return;
-
-    try {
-      const shareText = `${verse.verse}\n\n${verse.translation}\n\n- Bhagavad Gita ${verse.chapter}.${verse.verseNumber}`;
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(shareText);
-      } else {
-        Alert.alert('Sharing not available', 'Sharing is not available on this device');
-      }
-    } catch (error) {
-      console.error('Error sharing verse:', error);
-      Alert.alert('Error', 'Failed to share verse');
-    }
-  };
-
-  const handleSave = () => {
-    if (verse && onSave) {
-      onSave(verse);
-      Alert.alert('Saved', 'Verse saved to your favorites');
-    }
-  };
-
-  const handleRefresh = () => {
-    loadDailyVerse();
-  };
-
   if (loading) {
     return (
-      <View style={styles.card}>
+      <ThemedCard>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading daily verse...</Text>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ThemedText variant="body" color="textSecondary" style={styles.loadingText}>
+            Loading today's wisdom...
+          </ThemedText>
         </View>
-      </View>
+      </ThemedCard>
     );
   }
 
-  if (error) {
+  if (error || !shloka) {
     return (
-      <View style={styles.card}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color={colors.error} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ThemedCard>
+        <ThemedText variant="body" color="error">
+          {error || 'Unable to load verse'}
+        </ThemedText>
+      </ThemedCard>
     );
-  }
-
-  if (!verse) {
-    return null;
   }
 
   return (
-    <View style={styles.card}>
-      <LinearGradient
-        colors={[colors.cardBackground, colors.background]}
-        style={styles.gradient}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Daily Shloka</Text>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-            <Ionicons name="refresh" size={20} color={colors.primary} />
-          </TouchableOpacity>
+    <ThemedCard style={styles.card}>
+      <View style={styles.header}>
+        <ThemedText variant="h3" color="primary">
+          Daily Shloka
+        </ThemedText>
+        <ThemedText variant="caption" color="textSecondary">
+          Bhagavad Gita - Chapter {shloka.chapter}, Verse {shloka.verseNumber}
+        </ThemedText>
+      </View>
+
+      <View style={styles.content}>
+        <ThemedText variant="body" style={styles.verse} color="devotional">
+          {shloka.verse}
+        </ThemedText>
+
+        <View style={styles.translationContainer}>
+          <ThemedText variant="label" color="textSecondary" style={styles.translationLabel}>
+            Translation:
+          </ThemedText>
+          <ThemedText variant="body" color="text" style={styles.translation}>
+            {shloka.translation}
+          </ThemedText>
         </View>
 
-        {/* Verse Content */}
-        <View style={styles.content}>
-          <Text style={styles.sanskritVerse}>{verse.verse}</Text>
-          <Text style={styles.translation}>{verse.translation}</Text>
-          <Text style={styles.reference}>
-            Bhagavad Gita {verse.chapter}.{verse.verseNumber}
-          </Text>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={20} color={colors.primary} />
-            <Text style={styles.actionButtonText}>Share</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
-            <Ionicons name="bookmark-outline" size={20} color={colors.primary} />
-            <Text style={styles.actionButtonText}>Save</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-    </View>
+        {shloka.meaning && (
+          <View style={styles.meaningContainer}>
+            <ThemedText variant="label" color="textSecondary" style={styles.meaningLabel}>
+              Meaning:
+            </ThemedText>
+            <ThemedText variant="body" color="textSecondary" style={styles.meaning}>
+              {shloka.meaning}
+            </ThemedText>
+          </View>
+        )}
+      </View>
+    </ThemedCard>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    margin: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...shadows.medium,
-  },
-  gradient: {
-    padding: 20,
+    marginBottom: theme.spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  refreshButton: {
-    padding: 8,
+    marginBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: theme.spacing.sm,
   },
   content: {
-    marginBottom: 20,
+    gap: theme.spacing.md,
   },
-  sanskritVerse: {
-    fontSize: 18,
-    color: colors.text,
+  verse: {
+    fontSize: theme.typography.sizes.lg,
+    lineHeight: theme.typography.sizes.lg * theme.typography.lineHeights.relaxed,
     textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 28,
     fontStyle: 'italic',
+    marginBottom: theme.spacing.md,
+  },
+  translationContainer: {
+    marginTop: theme.spacing.md,
+  },
+  translationLabel: {
+    marginBottom: theme.spacing.xs,
   },
   translation: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 24,
+    lineHeight: theme.typography.sizes.md * theme.typography.lineHeights.relaxed,
   },
-  reference: {
-    fontSize: 14,
-    color: colors.primary,
-    textAlign: 'center',
-    fontWeight: '500',
+  meaningContainer: {
+    marginTop: theme.spacing.sm,
   },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  meaningLabel: {
+    marginBottom: theme.spacing.xs,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: colors.background,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    ...shadows.small,
-  },
-  actionButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '500',
+  meaning: {
+    lineHeight: theme.typography.sizes.md * theme.typography.lineHeights.relaxed,
   },
   loadingContainer: {
     alignItems: 'center',
-    padding: 40,
+    padding: theme.spacing.xl,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  errorContainer: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  errorText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.error,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: colors.primary,
-    borderRadius: 25,
-  },
-  retryButtonText: {
-    color: colors.secondary,
-    fontSize: 16,
-    fontWeight: '500',
+    marginTop: theme.spacing.md,
   },
 });
 
-export default DailyShlokaCard;

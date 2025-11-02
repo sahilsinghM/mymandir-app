@@ -1,182 +1,265 @@
-import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
+/**
+ * Streak Service
+ * Manages user streak tracking, daily check-ins, and karma points
+ */
 
-export interface StreakData {
-  currentStreak: number;
-  longestStreak: number;
-  lastActivity: Date;
-  totalDays: number;
-  streakStartDate: Date;
-}
+import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getFirestoreDB } from './firebase';
+import { StreakData } from '../types';
 
-export class StreakService {
-  private static db = getFirestore();
+const STREAK_STORAGE_KEY = '@mymandir:streak';
+const STREAK_FIRESTORE_COLLECTION = 'streaks';
 
-  /**
-   * Calculate streak based on last activity date
-   */
-  public static calculateStreak(lastActivity: Date): number {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+/**
+ * Check if two dates are on the same day
+ */
+const isSameDay = (date1: Date, date2: Date): boolean => {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+};
 
-    // Reset time to compare only dates
-    const lastActivityDate = new Date(lastActivity.getFullYear(), lastActivity.getMonth(), lastActivity.getDate());
-    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const yesterdayDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+/**
+ * Check if a date is yesterday
+ */
+const isYesterday = (date: Date): boolean => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return isSameDay(date, yesterday);
+};
 
-    // If last activity was today or yesterday, continue streak
-    if (lastActivityDate.getTime() === todayDate.getTime() || 
-        lastActivityDate.getTime() === yesterdayDate.getTime()) {
-      return 1; // At least 1 day streak
-    }
-
-    // If last activity was more than 1 day ago, streak is broken
-    return 0;
-  }
-
-  /**
-   * Get user's streak data
-   */
-  public static async getStreakData(userId: string): Promise<StreakData | null> {
-    try {
-      const streakDoc = await getDoc(doc(this.db, 'streaks', userId));
-      
-      if (streakDoc.exists()) {
-        const data = streakDoc.data();
-        return {
-          currentStreak: data.currentStreak || 0,
-          longestStreak: data.longestStreak || 0,
-          lastActivity: data.lastActivity?.toDate() || new Date(),
-          totalDays: data.totalDays || 0,
-          streakStartDate: data.streakStartDate?.toDate() || new Date(),
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error getting streak data:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update user's streak
-   */
-  public static async updateStreak(userId: string, newStreak: number): Promise<void> {
-    try {
-      const today = new Date();
-      const streakData = {
-        currentStreak: newStreak,
-        lastActivity: Timestamp.fromDate(today),
-        updatedAt: Timestamp.fromDate(today),
+/**
+ * Get streak data from AsyncStorage (for guest mode)
+ */
+const getStreakFromStorage = async (): Promise<StreakData | null> => {
+  try {
+    const data = await AsyncStorage.getItem(STREAK_STORAGE_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      return {
+        ...parsed,
+        lastCheckIn: parsed.lastCheckIn ? new Date(parsed.lastCheckIn) : null,
       };
-
-      // Get current streak data to update longest streak
-      const currentData = await this.getStreakData(userId);
-      if (currentData) {
-        streakData.longestStreak = Math.max(currentData.longestStreak, newStreak);
-        streakData.totalDays = currentData.totalDays + 1;
-        
-        // If streak is starting fresh, update start date
-        if (newStreak === 1 && currentData.currentStreak === 0) {
-          streakData.streakStartDate = Timestamp.fromDate(today);
-        } else {
-          streakData.streakStartDate = currentData.streakStartDate;
-        }
-      } else {
-        // First time user
-        streakData.longestStreak = newStreak;
-        streakData.totalDays = 1;
-        streakData.streakStartDate = Timestamp.fromDate(today);
-      }
-
-      await setDoc(doc(this.db, 'streaks', userId), streakData, { merge: true });
-    } catch (error) {
-      console.error('Error updating streak:', error);
-      throw error;
     }
+    return null;
+  } catch (error) {
+    console.error('Error reading streak from storage:', error);
+    return null;
   }
+};
 
-  /**
-   * Reset user's streak
-   */
-  public static async resetStreak(userId: string): Promise<void> {
-    try {
-      const today = new Date();
-      const streakData = {
-        currentStreak: 0,
-        lastActivity: Timestamp.fromDate(today),
-        updatedAt: Timestamp.fromDate(today),
+/**
+ * Save streak data to AsyncStorage (for guest mode)
+ */
+const saveStreakToStorage = async (streakData: StreakData): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(streakData));
+  } catch (error) {
+    console.error('Error saving streak to storage:', error);
+  }
+};
+
+/**
+ * Get streak data from Firestore (for authenticated users)
+ */
+const getStreakFromFirestore = async (userId: string): Promise<StreakData | null> => {
+  try {
+    const db = getFirestoreDB();
+    const streakRef = doc(db, STREAK_FIRESTORE_COLLECTION, userId);
+    const streakSnap = await getDoc(streakRef);
+
+    if (streakSnap.exists()) {
+      const data = streakSnap.data();
+      return {
+        currentStreak: data.currentStreak || 0,
+        longestStreak: data.longestStreak || 0,
+        totalDays: data.totalDays || 0,
+        lastCheckIn: data.lastCheckIn?.toDate() || null,
+        karmaPoints: data.karmaPoints || 0,
       };
-
-      await setDoc(doc(this.db, 'streaks', userId), streakData, { merge: true });
-    } catch (error) {
-      console.error('Error resetting streak:', error);
-      throw error;
     }
+    return null;
+  } catch (error) {
+    console.error('Error reading streak from Firestore:', error);
+    // Fall back to storage if Firestore fails
+    return getStreakFromStorage();
   }
+};
 
-  /**
-   * Check and update streak based on user activity
-   */
-  public static async checkAndUpdateStreak(userId: string): Promise<number> {
+/**
+ * Save streak data to Firestore (for authenticated users)
+ */
+const saveStreakToFirestore = async (userId: string, streakData: StreakData): Promise<void> => {
+  try {
+    const db = getFirestoreDB();
+    const streakRef = doc(db, STREAK_FIRESTORE_COLLECTION, userId);
+    await setDoc(streakRef, {
+      currentStreak: streakData.currentStreak,
+      longestStreak: streakData.longestStreak,
+      totalDays: streakData.totalDays,
+      lastCheckIn: streakData.lastCheckIn ? Timestamp.fromDate(streakData.lastCheckIn) : null,
+      karmaPoints: streakData.karmaPoints,
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error saving streak to Firestore:', error);
+    // Fall back to storage if Firestore fails
+    await saveStreakToStorage(streakData);
+  }
+};
+
+/**
+ * Get user streak data
+ */
+export const getStreakData = async (userId?: string, isGuest: boolean = false): Promise<StreakData> => {
+  let streakData: StreakData | null = null;
+
+  if (isGuest || !userId || userId === 'guest-user') {
+    // Guest mode - use AsyncStorage
+    streakData = await getStreakFromStorage();
+  } else {
+    // Authenticated user - try Firestore first
     try {
-      const streakData = await this.getStreakData(userId);
-      
-      if (!streakData) {
-        // First time user, start with 1 day streak
-        await this.updateStreak(userId, 1);
-        return 1;
-      }
-
-      const calculatedStreak = this.calculateStreak(streakData.lastActivity);
-      
-      if (calculatedStreak === 0) {
-        // Streak is broken, reset to 0
-        await this.resetStreak(userId);
-        return 0;
-      } else {
-        // Continue streak
-        const newStreak = streakData.currentStreak + 1;
-        await this.updateStreak(userId, newStreak);
-        return newStreak;
-      }
+      streakData = await getStreakFromFirestore(userId);
     } catch (error) {
-      console.error('Error checking and updating streak:', error);
-      throw error;
+      // If Firestore fails, fall back to storage
+      streakData = await getStreakFromStorage();
     }
   }
 
-  /**
-   * Get streak achievements
-   */
-  public static getStreakAchievements(currentStreak: number): string[] {
-    const achievements: string[] = [];
-
-    if (currentStreak >= 1) achievements.push('🌅 First Day');
-    if (currentStreak >= 3) achievements.push('🔥 Three Day Streak');
-    if (currentStreak >= 7) achievements.push('⭐ Week Warrior');
-    if (currentStreak >= 15) achievements.push('🏆 Half Month Hero');
-    if (currentStreak >= 30) achievements.push('👑 Month Master');
-    if (currentStreak >= 60) achievements.push('💎 Diamond Devotee');
-    if (currentStreak >= 100) achievements.push('🌟 Century Sage');
-    if (currentStreak >= 365) achievements.push('🎯 Year Yogi');
-
-    return achievements;
+  // Return default if no data exists
+  if (!streakData) {
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      totalDays: 0,
+      lastCheckIn: null,
+      karmaPoints: 0,
+    };
   }
 
-  /**
-   * Calculate karma points based on streak
-   */
-  public static calculateKarmaPoints(streak: number): number {
-    // Base points for each day
-    let points = streak * 10;
-    
-    // Bonus points for milestones
-    if (streak >= 7) points += 50; // Week bonus
-    if (streak >= 30) points += 200; // Month bonus
-    if (streak >= 100) points += 500; // Century bonus
-    
-    return points;
+  return streakData;
+};
+
+/**
+ * Record a daily check-in
+ */
+export const recordCheckIn = async (
+  userId?: string,
+  isGuest: boolean = false
+): Promise<{ streakData: StreakData; isNewCheckIn: boolean; karmaEarned: number }> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let streakData = await getStreakData(userId, isGuest);
+
+  // Check if already checked in today
+  if (streakData.lastCheckIn) {
+    const lastCheckIn = new Date(streakData.lastCheckIn);
+    lastCheckIn.setHours(0, 0, 0, 0);
+
+    if (isSameDay(lastCheckIn, today)) {
+      // Already checked in today
+      return {
+        streakData,
+        isNewCheckIn: false,
+        karmaEarned: 0,
+      };
+    }
+
+    // Check if continuing streak or breaking it
+    if (isYesterday(lastCheckIn)) {
+      // Continuing streak
+      streakData.currentStreak += 1;
+    } else {
+      // Streak broken, start over
+      streakData.currentStreak = 1;
+    }
+  } else {
+    // First check-in
+    streakData.currentStreak = 1;
   }
-}
+
+  // Update longest streak
+  if (streakData.currentStreak > streakData.longestStreak) {
+    streakData.longestStreak = streakData.currentStreak;
+  }
+
+  // Update totals
+  streakData.totalDays += 1;
+  streakData.lastCheckIn = today;
+
+  // Calculate karma points earned
+  // Base: 10 points per check-in
+  // Bonus: +5 points per day of current streak (capped at 50 bonus)
+  const streakBonus = Math.min(streakData.currentStreak * 5, 50);
+  const karmaEarned = 10 + streakBonus;
+  streakData.karmaPoints += karmaEarned;
+
+  // Save updated streak data
+  if (isGuest || !userId || userId === 'guest-user') {
+    await saveStreakToStorage(streakData);
+  } else {
+    try {
+      await saveStreakToFirestore(userId, streakData);
+    } catch (error) {
+      await saveStreakToStorage(streakData);
+    }
+  }
+
+  return {
+    streakData,
+    isNewCheckIn: true,
+    karmaEarned,
+  };
+};
+
+/**
+ * Add karma points manually (for other activities)
+ */
+export const addKarmaPoints = async (
+  userId: string | undefined,
+  points: number,
+  isGuest: boolean = false
+): Promise<StreakData> => {
+  let streakData = await getStreakData(userId, isGuest);
+  streakData.karmaPoints += points;
+
+  if (isGuest || !userId || userId === 'guest-user') {
+    await saveStreakToStorage(streakData);
+  } else {
+    try {
+      await saveStreakToFirestore(userId, streakData);
+    } catch (error) {
+      await saveStreakToStorage(streakData);
+    }
+  }
+
+  return streakData;
+};
+
+/**
+ * Check if user has checked in today
+ */
+export const hasCheckedInToday = async (
+  userId?: string,
+  isGuest: boolean = false
+): Promise<boolean> => {
+  const streakData = await getStreakData(userId, isGuest);
+  
+  if (!streakData.lastCheckIn) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lastCheckIn = new Date(streakData.lastCheckIn);
+  lastCheckIn.setHours(0, 0, 0, 0);
+
+  return isSameDay(lastCheckIn, today);
+};
+

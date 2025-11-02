@@ -1,272 +1,150 @@
-// Astrology service with mock data
-export interface Horoscope {
-  sign: string;
-  date: string;
-  prediction: string;
-  luckyNumbers: number[];
-  luckyColors: string[];
-  mood: string;
-  compatibility: string;
-}
+/**
+ * Astrology Service
+ * Provides basic horoscope and astrology data
+ */
 
-export interface WeeklyHoroscope {
-  sign: string;
-  weekStart: string;
-  weekEnd: string;
-  predictions: {
-    day: string;
-    prediction: string;
-    rating: number; // 1-5 stars
-  }[];
-  overallPrediction: string;
-}
+import { Horoscope, ZodiacSign } from '../types';
 
-export interface MonthlyHoroscope {
-  sign: string;
-  month: string;
-  year: number;
-  predictions: {
-    week: number;
-    prediction: string;
-    focus: string;
-  }[];
-  overallPrediction: string;
-}
+const AZTRO_API_BASE = 'https://aztro.sameerkumar.website';
 
-export interface Panchang {
-  date: string;
-  tithi: string;
-  nakshatra: string;
-  yoga: string;
-  karana: string;
-  paksha: string;
-  ritu: string;
-}
-
-export interface AuspiciousTimings {
-  sunrise: string;
-  sunset: string;
-  moonrise: string;
-  moonset: string;
-  brahmaMuhurat: string;
-  abhijitMuhurat: string;
-  rahuKaal: string;
-  gulikaKaal: string;
-}
-
-export class AstroService {
-  private static readonly ZODIAC_SIGNS = [
-    'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-    'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
-  ];
-
-  private static readonly MOODS = [
-    'Positive', 'Neutral', 'Cautious', 'Optimistic', 'Reflective', 'Energetic'
-  ];
-
-  private static readonly COMPATIBILITY = [
-    'High', 'Medium', 'Low', 'Excellent', 'Good', 'Fair'
-  ];
-
-  private static readonly TITHIS = [
-    'Purnima', 'Krishna Paksha Pratipada', 'Krishna Paksha Dwitiya', 'Krishna Paksha Tritiya',
-    'Krishna Paksha Chaturthi', 'Krishna Paksha Panchami', 'Krishna Paksha Shashthi',
-    'Krishna Paksha Saptami', 'Krishna Paksha Ashtami', 'Krishna Paksha Navami',
-    'Krishna Paksha Dashami', 'Krishna Paksha Ekadashi', 'Krishna Paksha Dwadashi',
-    'Krishna Paksha Trayodashi', 'Krishna Paksha Chaturdashi', 'Amavasya'
-  ];
-
-  private static readonly NAKSHATRAS = [
-    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
-    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
-    'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
-    'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishtha',
-    'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
-  ];
-
-  private static readonly YOGAS = [
-    'Vishkambha', 'Priti', 'Ayushman', 'Saubhagya', 'Shobhana', 'Atiganda',
-    'Sukarma', 'Dhriti', 'Shula', 'Ganda', 'Vriddhi', 'Dhruva',
-    'Vyaghata', 'Harshana', 'Vajra', 'Siddhi', 'Vyatipata', 'Variyan',
-    'Parigha', 'Shiva', 'Siddha', 'Sadhya', 'Shubha', 'Shukla',
-    'Brahma', 'Indra', 'Vaidhriti'
-  ];
-
-  private static readonly KARANAS = [
-    'Bava', 'Balava', 'Kaulava', 'Taitila', 'Gara', 'Vanija',
-    'Bhadra', 'Vishti', 'Shakuni', 'Chatushpada', 'Naga', 'Kinstughna'
-  ];
-
-  private static readonly RITUS = [
-    'Vasant', 'Grishma', 'Varsha', 'Sharad', 'Hemant', 'Shishir'
-  ];
-
-  private static getRandomElement<T>(array: T[]): T {
-    return array[Math.floor(Math.random() * array.length)];
-  }
-
-  private static getRandomElements<T>(array: T[], count: number): T[] {
-    const shuffled = [...array].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  }
-
-  private static getRandomNumber(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  private static getCurrentDate(): string {
-    return new Date().toISOString().split('T')[0];
-  }
-
-  private static getWeekDates(): { start: string; end: string } {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
+/**
+ * Get daily horoscope for a zodiac sign
+ */
+export const getDailyHoroscope = async (
+  sign: ZodiacSign
+): Promise<Horoscope> => {
+  try {
+    // Convert sign to lowercase for API
+    const signLower = sign.toLowerCase();
+    const url = `${AZTRO_API_BASE}/?sign=${signLower}&day=today`;
     
-    return {
-      start: startOfWeek.toISOString().split('T')[0],
-      end: endOfWeek.toISOString().split('T')[0]
-    };
-  }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  private static getMonthYear(): { month: string; year: number } {
-    const now = new Date();
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return {
-      month: months[now.getMonth()],
-      year: now.getFullYear()
-    };
-  }
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-  /**
-   * Get daily horoscope for a zodiac sign
-   */
-  static async getDailyHoroscope(sign: string): Promise<Horoscope> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100));
+    const data = await response.json();
 
-    const predictions = [
-      `Today brings new opportunities for ${sign}. Trust your instincts and take calculated risks.`,
-      `A day of reflection and planning for ${sign}. Focus on your long-term goals.`,
-      `Social connections will be important today for ${sign}. Reach out to friends and family.`,
-      `Creative energy is high for ${sign}. Express yourself through art or music.`,
-      `Financial matters require attention today for ${sign}. Review your budget carefully.`,
-      `Health and wellness should be your priority today, ${sign}. Take time for self-care.`,
-      `Communication is key today for ${sign}. Speak your truth with confidence.`,
-      `Travel or learning opportunities may arise for ${sign}. Be open to new experiences.`,
-      `Relationships take center stage today for ${sign}. Nurture your connections.`,
-      `Career advancement is possible today for ${sign}. Showcase your skills.`
-    ];
+    if (!data || !data.description) {
+      throw new Error('Invalid response from API');
+    }
 
     return {
       sign,
-      date: this.getCurrentDate(),
-      prediction: this.getRandomElement(predictions),
-      luckyNumbers: this.getRandomElements([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50], 3),
-      luckyColors: this.getRandomElements(['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Gold', 'Silver', 'White'], 2),
-      mood: this.getRandomElement(this.MOODS),
-      compatibility: this.getRandomElement(this.COMPATIBILITY)
+      date: data.current_date || new Date().toISOString().split('T')[0],
+      prediction: data.description,
+      type: 'daily',
     };
+  } catch (error) {
+    console.error('Error fetching daily horoscope:', error);
+    // Return fallback horoscope
+    return getFallbackHoroscope(sign);
   }
+};
 
-  /**
-   * Get weekly horoscope for a zodiac sign
-   */
-  static async getWeeklyHoroscope(sign: string): Promise<WeeklyHoroscope> {
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    const weekDates = this.getWeekDates();
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+/**
+ * Get weekly horoscope for a zodiac sign
+ */
+export const getWeeklyHoroscope = async (
+  sign: ZodiacSign
+): Promise<Horoscope> => {
+  try {
+    // Convert sign to lowercase for API
+    const signLower = sign.toLowerCase();
+    const url = `${AZTRO_API_BASE}/?sign=${signLower}&day=tomorrow`;
     
-    const predictions = days.map(day => ({
-      day,
-      prediction: `A ${this.getRandomElement(['productive', 'peaceful', 'exciting', 'challenging', 'rewarding'])} day for ${sign}.`,
-      rating: this.getRandomNumber(3, 5)
-    }));
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || !data.description) {
+      throw new Error('Invalid response from API');
+    }
 
     return {
       sign,
-      weekStart: weekDates.start,
-      weekEnd: weekDates.end,
-      predictions,
-      overallPrediction: `This week brings ${this.getRandomElement(['growth', 'stability', 'change', 'success', 'learning'])} for ${sign}. Focus on ${this.getRandomElement(['relationships', 'career', 'health', 'creativity', 'spirituality'])}.`
+      date: data.current_date || new Date().toISOString().split('T')[0],
+      prediction: data.description,
+      type: 'weekly',
     };
+  } catch (error) {
+    console.error('Error fetching weekly horoscope:', error);
+    return getFallbackHoroscope(sign);
   }
+};
 
-  /**
-   * Get monthly horoscope for a zodiac sign
-   */
-  static async getMonthlyHoroscope(sign: string): Promise<MonthlyHoroscope> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    const { month, year } = this.getMonthYear();
-    const weeks = [1, 2, 3, 4];
-    
-    const predictions = weeks.map(week => ({
-      week,
-      prediction: `Week ${week} brings ${this.getRandomElement(['new opportunities', 'challenges', 'growth', 'stability', 'creativity'])} for ${sign}.`,
-      focus: this.getRandomElement(['Career', 'Relationships', 'Health', 'Finance', 'Spirituality', 'Learning'])
-    }));
-
-    return {
-      sign,
-      month,
-      year,
-      predictions,
-      overallPrediction: `${month} ${year} is a ${this.getRandomElement(['transformative', 'productive', 'peaceful', 'exciting', 'challenging'])} month for ${sign}. Focus on ${this.getRandomElement(['personal growth', 'relationships', 'career advancement', 'health and wellness', 'creative expression'])}.`
-    };
+/**
+ * Get monthly horoscope for a zodiac sign
+ */
+export const getMonthlyHoroscope = async (
+  sign: ZodiacSign
+): Promise<Horoscope> => {
+  try {
+    // AztroAPI doesn't have monthly, so we'll use weekly for now
+    return getWeeklyHoroscope(sign);
+  } catch (error) {
+    console.error('Error fetching monthly horoscope:', error);
+    return getFallbackHoroscope(sign);
   }
+};
 
-  /**
-   * Get Panchang data for today
-   */
-  static async getPanchang(): Promise<Panchang> {
-    await new Promise(resolve => setTimeout(resolve, 100));
+/**
+ * Fallback horoscope when API fails
+ */
+const getFallbackHoroscope = (sign: ZodiacSign): Horoscope => {
+  const predictions: Record<ZodiacSign, string> = {
+    Aries: `Dear ${sign}, today the stars align to bring you clarity and purpose. Your natural leadership shines through, and opportunities await those bold enough to take them. Trust your instincts and move forward with confidence.`,
+    Taurus: `For ${sign}, this is a time of stability and grounding. The universe supports your practical approach to life. Financial matters may improve, and relationships deepen. Stay patient and persistent in your endeavors.`,
+    Gemini: `Communication flows easily for ${sign} today. Your curiosity and adaptability open new doors. Social connections bring joy, and intellectual pursuits are favored. Express your thoughts clearly and embrace new ideas.`,
+    Cancer: `Emotional depth characterizes ${sign}'s day. Home and family matters take center stage. Your intuition is strong—trust it. Nurture your relationships and create a peaceful sanctuary around you.`,
+    Leo: `Creative energy surges for ${sign}. Your natural charisma draws positive attention and opportunities. This is a day to express yourself boldly and pursue artistic or leadership endeavors. Confidence is your greatest asset.`,
+    Virgo: `Attention to detail serves ${sign} well today. Your analytical mind helps solve problems and organize thoughts. Health and wellness activities are favored. Take time for self-care and practical improvements.`,
+    Libra: `Harmony and balance are themes for ${sign}. Relationships and partnerships flourish. Your diplomatic nature helps resolve conflicts. Aesthetic pursuits and creating beauty in your surroundings bring fulfillment.`,
+    Scorpio: `Transformation and renewal inspire ${sign} today. Deep insights emerge, revealing hidden truths. Your intensity and passion fuel meaningful connections. Embrace change as a path to personal growth.`,
+    Sagittarius: `Adventure and expansion call to ${sign}. Travel, learning, and exploring new philosophies enrich your spirit. Optimism guides you, and distant horizons beckon. Share your wisdom with others.`,
+    Capricorn: `Ambition and structure support ${sign}'s goals today. Career matters progress, and your disciplined approach yields results. Long-term planning pays off. Build foundations for future success.`,
+    Aquarius: `Innovation and humanitarian ideals motivate ${sign}. Your unique perspective brings fresh solutions to old problems. Friendships and group activities energize you. Embrace your originality and think outside the box.`,
+    Pisces: `Intuition and spirituality guide ${sign} today. Dreams may hold important messages, and your compassionate nature helps others. Creative and artistic pursuits flow naturally. Connect with your inner wisdom.`,
+  };
 
-    return {
-      date: this.getCurrentDate(),
-      tithi: this.getRandomElement(this.TITHIS),
-      nakshatra: this.getRandomElement(this.NAKSHATRAS),
-      yoga: this.getRandomElement(this.YOGAS),
-      karana: this.getRandomElement(this.KARANAS),
-      paksha: this.getRandomElement(['Shukla Paksha', 'Krishna Paksha']),
-      ritu: this.getRandomElement(this.RITUS)
-    };
-  }
+  return {
+    sign,
+    date: new Date().toISOString().split('T')[0],
+    prediction: predictions[sign] || `Today is a day for ${sign} to focus on spiritual growth and inner peace. Trust in the divine timing of events in your life.`,
+    type: 'daily',
+  };
+};
 
-  /**
-   * Get auspicious timings for today
-   */
-  static async getAuspiciousTimings(): Promise<AuspiciousTimings> {
-    await new Promise(resolve => setTimeout(resolve, 100));
+/**
+ * Get zodiac sign from date of birth
+ */
+export const getZodiacSign = (month: number, day: number): ZodiacSign => {
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return 'Aries';
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return 'Taurus';
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return 'Gemini';
+  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return 'Cancer';
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return 'Leo';
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return 'Virgo';
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return 'Libra';
+  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'Scorpio';
+  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'Sagittarius';
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return 'Capricorn';
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'Aquarius';
+  return 'Pisces';
+};
 
-    const generateTime = (hour: number, minute: number) => {
-      const h = hour.toString().padStart(2, '0');
-      const m = minute.toString().padStart(2, '0');
-      return `${h}:${m}`;
-    };
-
-    return {
-      sunrise: generateTime(this.getRandomNumber(5, 7), this.getRandomNumber(0, 59)),
-      sunset: generateTime(this.getRandomNumber(17, 19), this.getRandomNumber(0, 59)),
-      moonrise: generateTime(this.getRandomNumber(18, 23), this.getRandomNumber(0, 59)),
-      moonset: generateTime(this.getRandomNumber(5, 11), this.getRandomNumber(0, 59)),
-      brahmaMuhurat: generateTime(this.getRandomNumber(4, 5), this.getRandomNumber(0, 59)),
-      abhijitMuhurat: generateTime(this.getRandomNumber(11, 12), this.getRandomNumber(0, 59)),
-      rahuKaal: generateTime(this.getRandomNumber(9, 10), this.getRandomNumber(0, 59)),
-      gulikaKaal: generateTime(this.getRandomNumber(13, 14), this.getRandomNumber(0, 59))
-    };
-  }
-
-  /**
-   * Get all zodiac signs
-   */
-  static getZodiacSigns(): string[] {
-    return [...this.ZODIAC_SIGNS];
-  }
-}

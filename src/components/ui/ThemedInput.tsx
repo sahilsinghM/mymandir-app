@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { TextInput, TextInputProps, View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  TextInput,
+  TextInputProps,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import { theme } from '../../theme/theme';
-import ThemedText from './ThemedText';
+import { ThemedText } from './ThemedText';
 
 interface ThemedInputProps extends TextInputProps {
   label?: string;
   error?: string;
   helperText?: string;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   onRightIconPress?: () => void;
-  variant?: 'default' | 'outlined' | 'filled';
-  size?: 'sm' | 'md' | 'lg';
 }
 
 export const ThemedInput: React.FC<ThemedInputProps> = ({
@@ -22,72 +25,48 @@ export const ThemedInput: React.FC<ThemedInputProps> = ({
   leftIcon,
   rightIcon,
   onRightIconPress,
-  variant = 'outlined',
-  size = 'md',
   style,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
 
-  const inputStyle = [
-    styles.input,
-    styles[variant],
-    styles[`size_${size}`],
-    isFocused && styles.focused,
-    error && styles.error,
-    style,
-  ];
-
-  const containerStyle = [
-    styles.container,
-    styles[`container_${variant}`],
-    isFocused && styles.containerFocused,
-    error && styles.containerError,
-  ];
-
   return (
-    <View style={styles.wrapper}>
+    <View style={styles.container}>
       {label && (
-        <ThemedText variant="caption" color="text" weight="medium" style={styles.label}>
+        <ThemedText variant="label" color="text" style={styles.label}>
           {label}
         </ThemedText>
       )}
-      
-      <View style={containerStyle}>
-        {leftIcon && (
-          <Ionicons 
-            name={leftIcon} 
-            size={getIconSize(size)} 
-            color={theme.colors.textSecondary} 
-            style={styles.leftIcon}
-          />
-        )}
-        
+      <View
+        style={[
+          styles.inputContainer,
+          isFocused && styles.inputContainerFocused,
+          error && styles.inputContainerError,
+        ]}
+      >
+        {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
         <TextInput
-          style={inputStyle}
+          style={[styles.input, leftIcon && styles.inputWithLeftIcon, rightIcon && styles.inputWithRightIcon]}
+          placeholderTextColor={theme.colors.textLight}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholderTextColor={theme.colors.textLight}
           {...props}
         />
-        
         {rightIcon && (
-          <TouchableOpacity onPress={onRightIconPress} style={styles.rightIconContainer}>
-            <Ionicons 
-              name={rightIcon} 
-              size={getIconSize(size)} 
-              color={theme.colors.textSecondary} 
-            />
+          <TouchableOpacity
+            onPress={onRightIconPress}
+            style={styles.rightIcon}
+            disabled={!onRightIconPress}
+          >
+            {rightIcon}
           </TouchableOpacity>
         )}
       </View>
-      
       {error && (
         <ThemedText variant="caption" color="error" style={styles.errorText}>
           {error}
         </ThemedText>
       )}
-      
       {helperText && !error && (
         <ThemedText variant="caption" color="textSecondary" style={styles.helperText}>
           {helperText}
@@ -97,94 +76,51 @@ export const ThemedInput: React.FC<ThemedInputProps> = ({
   );
 };
 
-const getIconSize = (size: string): number => {
-  switch (size) {
-    case 'sm':
-      return 16;
-    case 'md':
-      return 20;
-    case 'lg':
-      return 24;
-    default:
-      return 20;
-  }
-};
-
 const styles = StyleSheet.create({
-  wrapper: {
+  container: {
     marginBottom: theme.spacing.md,
   },
   label: {
     marginBottom: theme.spacing.xs,
   },
-  container: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: theme.borderRadius.lg,
-  },
-  container_default: {
-    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.backgroundSecondary,
+    minHeight: 48,
   },
-  container_outlined: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  container_filled: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 0,
-  },
-  containerFocused: {
+  inputContainerFocused: {
     borderColor: theme.colors.primary,
-    ...theme.shadows.sm,
+    borderWidth: 2,
   },
-  containerError: {
+  inputContainerError: {
     borderColor: theme.colors.error,
   },
   input: {
     flex: 1,
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
-    fontFamily: theme.typography.fonts.primary,
-  },
-  default: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
   },
-  outlined: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+  inputWithLeftIcon: {
+    paddingLeft: theme.spacing.xs,
   },
-  filled: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  size_sm: {
-    fontSize: theme.typography.sizes.sm,
-    paddingVertical: theme.spacing.xs,
-  },
-  size_md: {
-    fontSize: theme.typography.sizes.base,
-    paddingVertical: theme.spacing.sm,
-  },
-  size_lg: {
-    fontSize: theme.typography.sizes.lg,
-    paddingVertical: theme.spacing.md,
-  },
-  focused: {
-    // Additional focused styles can be added here
-  },
-  error: {
-    // Additional error styles can be added here
+  inputWithRightIcon: {
+    paddingRight: theme.spacing.xs,
   },
   leftIcon: {
-    marginLeft: theme.spacing.md,
-    marginRight: theme.spacing.sm,
+    paddingLeft: theme.spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  rightIconContainer: {
-    padding: theme.spacing.sm,
-    marginRight: theme.spacing.sm,
+  rightIcon: {
+    paddingRight: theme.spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorText: {
     marginTop: theme.spacing.xs,
@@ -194,4 +130,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ThemedInput;

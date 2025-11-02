@@ -1,192 +1,137 @@
 import React from 'react';
-import { TouchableOpacity, TouchableOpacityProps, StyleSheet, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  TouchableOpacity,
+  TouchableOpacityProps,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+} from 'react-native';
 import { theme } from '../../theme/theme';
-import ThemedText from './ThemedText';
+import { ThemedText } from './ThemedText';
 
-interface ThemedButtonProps extends TouchableOpacityProps {
-  variant?: 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'gradient';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  icon?: keyof typeof Ionicons.glyphMap;
-  iconPosition?: 'left' | 'right';
+interface ThemedButtonProps extends Omit<TouchableOpacityProps, 'style'> {
+  title: string;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
+  style?: ViewStyle;
   fullWidth?: boolean;
-  children: React.ReactNode;
 }
 
 export const ThemedButton: React.FC<ThemedButtonProps> = ({
+  title,
   variant = 'primary',
   size = 'md',
-  icon,
-  iconPosition = 'left',
   loading = false,
-  fullWidth = false,
-  children,
-  style,
   disabled,
+  style,
+  fullWidth = false,
   ...props
 }) => {
-  const buttonStyle = [
-    styles.base,
-    styles[variant],
-    styles[size],
-    fullWidth && styles.fullWidth,
-    disabled && styles.disabled,
-    style,
-  ];
+  const getVariantStyles = (): ViewStyle => {
+    switch (variant) {
+      case 'primary':
+        return {
+          backgroundColor: theme.colors.primary,
+          borderWidth: 0,
+        };
+      case 'secondary':
+        return {
+          backgroundColor: theme.colors.secondary,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+        };
+      case 'outline':
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderColor: theme.colors.primary,
+        };
+      case 'ghost':
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 0,
+        };
+      default:
+        return {};
+    }
+  };
 
-  const textColor = getTextColor(variant, disabled);
-  const iconSize = getIconSize(size);
+  const getSizeStyles = (): ViewStyle => {
+    switch (size) {
+      case 'sm':
+        return {
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+        };
+      case 'md':
+        return {
+          paddingVertical: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+        };
+      case 'lg':
+        return {
+          paddingVertical: theme.spacing.lg,
+          paddingHorizontal: theme.spacing.xl,
+        };
+      default:
+        return {};
+    }
+  };
 
-  const renderContent = () => (
-    <>
-      {loading && (
-        <ActivityIndicator 
-          size="small" 
-          color={textColor} 
-          style={styles.loading}
-        />
-      )}
-      {icon && iconPosition === 'left' && !loading && (
-        <Ionicons 
-          name={icon} 
-          size={iconSize} 
-          color={textColor} 
-          style={styles.iconLeft}
-        />
-      )}
-      <ThemedText 
-        variant="body" 
-        color={textColor} 
-        weight="medium"
-        style={styles.text}
-      >
-        {children}
-      </ThemedText>
-      {icon && iconPosition === 'right' && !loading && (
-        <Ionicons 
-          name={icon} 
-          size={iconSize} 
-          color={textColor} 
-          style={styles.iconRight}
-        />
-      )}
-    </>
-  );
+  const getTextColor = (): keyof typeof theme.colors => {
+    switch (variant) {
+      case 'primary':
+        return 'textInverse';
+      case 'outline':
+        return 'primary';
+      case 'ghost':
+        return 'primary';
+      default:
+        return 'text';
+    }
+  };
 
-  if (variant === 'gradient') {
-    return (
-      <TouchableOpacity
-        style={[buttonStyle, { overflow: 'hidden' }]}
-        disabled={disabled || loading}
-        {...props}
-      >
-        <LinearGradient
-          colors={[theme.colors.gradientStart, theme.colors.gradientEnd]}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          {renderContent()}
-        </LinearGradient>
-      </TouchableOpacity>
-    );
-  }
+  const isDisabled = disabled || loading;
 
   return (
     <TouchableOpacity
-      style={buttonStyle}
-      disabled={disabled || loading}
+      style={[
+        styles.button,
+        getVariantStyles(),
+        getSizeStyles(),
+        fullWidth && styles.fullWidth,
+        isDisabled && styles.disabled,
+        style,
+      ]}
+      disabled={isDisabled}
+      activeOpacity={0.7}
       {...props}
     >
-      {renderContent()}
+      {loading ? (
+        <ActivityIndicator
+          color={variant === 'primary' ? theme.colors.textInverse : theme.colors.primary}
+          size="small"
+        />
+      ) : (
+        <ThemedText
+          variant="label"
+          weight="semiBold"
+          color={getTextColor()}
+        >
+          {title}
+        </ThemedText>
+      )}
     </TouchableOpacity>
   );
 };
 
-const getTextColor = (variant: string, disabled?: boolean): keyof typeof theme.colors => {
-  if (disabled) return 'textDisabled';
-  
-  switch (variant) {
-    case 'primary':
-    case 'gradient':
-      return 'secondary';
-    case 'secondary':
-    case 'outline':
-    case 'ghost':
-      return 'primary';
-    case 'accent':
-      return 'secondary';
-    default:
-      return 'text';
-  }
-};
-
-const getIconSize = (size: string): number => {
-  switch (size) {
-    case 'sm':
-      return 16;
-    case 'md':
-      return 20;
-    case 'lg':
-      return 24;
-    case 'xl':
-      return 28;
-    default:
-      return 20;
-  }
-};
-
 const styles = StyleSheet.create({
-  base: {
-    flexDirection: 'row',
+  button: {
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.borderRadius.lg,
-    ...theme.shadows.sm,
-  },
-  primary: {
-    backgroundColor: theme.colors.primary,
-  },
-  secondary: {
-    backgroundColor: theme.colors.secondary,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  accent: {
-    backgroundColor: theme.colors.accent,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-  gradient: {
-    backgroundColor: 'transparent',
-  },
-  sm: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    minHeight: 32,
-  },
-  md: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
     minHeight: 44,
-  },
-  lg: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.lg,
-    minHeight: 52,
-  },
-  xl: {
-    paddingHorizontal: theme.spacing['2xl'],
-    paddingVertical: theme.spacing.xl,
-    minHeight: 60,
   },
   fullWidth: {
     width: '100%',
@@ -194,25 +139,5 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  gradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  text: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  iconLeft: {
-    marginRight: theme.spacing.sm,
-  },
-  iconRight: {
-    marginLeft: theme.spacing.sm,
-  },
-  loading: {
-    marginRight: theme.spacing.sm,
-  },
 });
 
-export default ThemedButton;

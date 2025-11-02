@@ -1,161 +1,124 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, ScrollView, Image } from 'react-native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { theme } from '../../theme/theme';
+import { ThemedText, ThemedButton } from '../../components/ui';
+import { useAuth } from '../../contexts/AuthContext';
 
-const { width, height } = Dimensions.get('window');
+type RootStackParamList = {
+  Welcome: undefined;
+  Login: undefined;
+};
+
+type WelcomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Welcome'>;
 
 interface WelcomeScreenProps {
-  navigation: {
-    navigate: (screen: string) => void;
-  };
+  navigation: WelcomeScreenNavigationProp;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
-  const handleContinue = () => {
-    navigation.navigate('Login');
-  };
+  const { signInAsGuest } = useAuth();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#FF9933', '#FFD700', '#FFFFFF']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.content}>
-          {/* Deity Image */}
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/200x200/FF9933/FFFFFF?text=🕉️' }}
-              style={styles.deityImage}
-              testID="deity-image"
-            />
+    <ScrollView
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.content}>
+        {/* Logo/Icon area */}
+        <View style={styles.logoContainer}>
+          <View style={styles.logoCircle}>
+            <ThemedText variant="h1" color="primary" style={styles.logoText}>
+              ॐ
+            </ThemedText>
           </View>
-
-          {/* Welcome Text */}
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>Welcome to MyMandir</Text>
-            <Text style={styles.subtitle}>
-              Your Digital Spiritual Journey Begins Here
-            </Text>
-            <Text style={styles.description}>
-              Discover daily devotion, AI-powered astrology, sacred mantras, and connect with your spiritual self.
-            </Text>
-          </View>
-
-          {/* Continue Button */}
-          <TouchableOpacity
-            style={styles.continueButton}
-            onPress={handleContinue}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#FF9933', '#FFD700']}
-              style={styles.buttonGradient}
-            >
-              <Text style={styles.buttonText}>Continue</Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
-      </LinearGradient>
-    </SafeAreaView>
+
+        {/* Welcome text */}
+        <View style={styles.textContainer}>
+          <ThemedText variant="h1" style={styles.title}>
+            Welcome to MyMandir
+          </ThemedText>
+          <ThemedText variant="body" color="textSecondary" style={styles.subtitle}>
+            Your daily dose of divinity
+          </ThemedText>
+          <ThemedText variant="body" color="textSecondary" style={styles.description}>
+            Discover spiritual wisdom, daily horoscopes, mantras, and connect with your inner self.
+          </ThemedText>
+        </View>
+
+        {/* Action buttons */}
+        <View style={styles.buttonContainer}>
+          <ThemedButton
+            title="Get Started"
+            variant="primary"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.navigate('Login')}
+            style={styles.primaryButton}
+          />
+          <ThemedButton
+            title="Continue as Guest"
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={signInAsGuest}
+          />
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
+    flexGrow: 1,
+    backgroundColor: theme.colors.background,
   },
   content: {
     flex: 1,
+    padding: theme.spacing.xl,
+    justifyContent: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.xxl,
+  },
+  logoCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    ...theme.shadows.lg,
   },
-  imageContainer: {
-    marginBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  deityImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 4,
-    borderColor: '#FFD700',
+  logoText: {
+    fontSize: 64,
   },
   textContainer: {
+    marginBottom: theme.spacing.xxl,
     alignItems: 'center',
-    marginBottom: 50,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FF9933',
+    marginBottom: theme.spacing.md,
     textAlign: 'center',
-    marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#333',
+    marginBottom: theme.spacing.sm,
     textAlign: 'center',
-    marginBottom: 15,
-    fontWeight: '500',
+    fontSize: theme.typography.sizes.lg,
   },
   description: {
-    fontSize: 16,
-    color: '#666',
+    marginTop: theme.spacing.md,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: theme.typography.sizes.md * theme.typography.lineHeights.relaxed,
   },
-  continueButton: {
-    width: width * 0.8,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: '#FF9933',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  buttonContainer: {
+    gap: theme.spacing.md,
   },
-  buttonGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+  primaryButton: {
+    marginBottom: theme.spacing.sm,
   },
 });
 
-export default WelcomeScreen;

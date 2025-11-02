@@ -1,28 +1,23 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
-  auth,
-  firestore,
-  GoogleAuthProvider,
-  signInWithPopup,
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  User,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-} from '../services/firebase';
-import { UserProfile, COLLECTIONS } from '../types/firestore';
+  GoogleAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth';
+import { getFirebaseAuth } from '../services/firebase';
+import { User, AuthState } from '../types';
 
-interface AuthContextType {
-  user: User | null;
-  userProfile: UserProfile | null;
-  loading: boolean;
+interface AuthContextType extends AuthState {
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signInWithPhone: (phoneNumber: string) => Promise<void>;
+  signInAsGuest: () => void;
   signOut: () => Promise<void>;
-  updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
-  createUserProfile: (data: Partial<UserProfile>) => Promise<void>;
+  isGuest: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
@@ -41,133 +36,133 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        // Fetch user profile from Firestore
-        const userDocRef = doc(firestore, COLLECTIONS.USERS, firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data() as UserProfile);
-        }
-      } else {
-        setUserProfile(null);
-      }
-      
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const signInWithGoogle = async () => {
+    // Try to initialize Firebase, but don't fail if it's not configured
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      
-      // Check if user profile exists, if not create one
-      const userDocRef = doc(firestore, COLLECTIONS.USERS, result.user.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      if (!userDoc.exists()) {
-        await createUserProfile({
-          uid: result.user.uid,
-          email: result.user.email,
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL,
-        });
-      } else {
-        // Update last visit
-        await updateDoc(userDocRef, {
-          lastVisit: new Date(),
-        });
-      }
+      const auth = getFirebaseAuth();
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+        if (firebaseUser) {
+          setUser({
+            id: firebaseUser.uid,
+            email: firebaseUser.email || undefined,
+            displayName: firebaseUser.displayName || undefined,
+            photoURL: firebaseUser.photoURL || undefined,
+            createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
+            lastLoginAt: firebaseUser.metadata.lastSignInTime
+              ? new Date(firebaseUser.metadata.lastSignInTime)
+              : undefined,
+          });
+          setIsGuest(false);
+        } else {
+          // Only clear user if not in guest mode
+          if (!isGuest) {
+            setUser(null);
+          }
+        }
+        setLoading(false);
+      });
+
+      return unsubscribe;
     } catch (error) {
-      console.error('Google sign-in error:', error);
-      throw error;
+      // Firebase not configured - allow guest mode
+      console.log('Firebase not configured, guest mode available');
+      setLoading(false);
+    }
+  }, [isGuest]);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+      setIsGuest(false);
+      const auth = getFirebaseAuth();
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const signInWithPhone = async (phoneNumber: string) => {
-    // TODO: Implement phone authentication
-    // This requires RecaptchaVerifier which needs DOM elements
-    // Will be implemented with actual screens
-    throw new Error('Phone authentication not yet implemented');
+  const signUp = async (email: string, password: string) => {
+    try {
+      setError(null);
+      setLoading(true);
+      setIsGuest(false);
+      const auth = getFirebaseAuth();
+      await createUserWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInAsGuest = () => {
+    setError(null);
+    setIsGuest(true);
+    setUser({
+      id: 'guest-user',
+      displayName: 'Guest User',
+      email: 'guest@mymandir.app',
+      createdAt: new Date(),
+    });
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      // TODO: Implement Google sign-in with Expo Google auth
+      // This will require @react-native-google-signin/google-signin or expo-auth-session
+      throw new Error('Google sign-in not yet implemented');
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
-      setUserProfile(null);
-    } catch (error) {
-      console.error('Sign-out error:', error);
-      throw error;
-    }
-  };
-
-  const createUserProfile = async (data: Partial<UserProfile>) => {
-    if (!user) {
-      throw new Error('No user logged in');
-    }
-
-    const now = new Date();
-    const profile: UserProfile = {
-      uid: data.uid || user.uid,
-      email: data.email || user.email,
-      displayName: data.displayName || user.displayName,
-      photoURL: data.photoURL || user.photoURL,
-      deityPreference: data.deityPreference || 'Krishna',
-      language: data.language || 'english',
-      birthDate: data.birthDate,
-      birthTime: data.birthTime,
-      birthPlace: data.birthPlace,
-      createdAt: now,
-      lastVisit: now,
-      streakCount: 0,
-      karmaPoints: 0,
-      notificationsEnabled: true,
-      prayerReminderTime: data.prayerReminderTime,
-    };
-
-    const userDocRef = doc(firestore, COLLECTIONS.USERS, profile.uid);
-    await setDoc(userDocRef, profile);
-    setUserProfile(profile);
-  };
-
-  const updateUserProfile = async (data: Partial<UserProfile>) => {
-    if (!user) {
-      throw new Error('No user logged in');
-    }
-
-    const userDocRef = doc(firestore, COLLECTIONS.USERS, user.uid);
-    await updateDoc(userDocRef, { ...data, lastVisit: new Date() });
-    
-    // Refresh user profile
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-      setUserProfile(userDoc.data() as UserProfile);
+      setError(null);
+      setIsGuest(false);
+      
+      // Try to sign out from Firebase if authenticated
+      try {
+        const auth = getFirebaseAuth();
+        await firebaseSignOut(auth);
+      } catch (err) {
+        // Firebase not configured or not signed in - just clear guest state
+        console.log('Signing out from guest mode');
+      }
+      
+      setUser(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign out');
+      throw err;
     }
   };
 
   const value: AuthContextType = {
     user,
-    userProfile,
     loading,
+    error,
+    signIn,
+    signUp,
     signInWithGoogle,
-    signInWithPhone,
+    signInAsGuest,
     signOut,
-    updateUserProfile,
-    createUserProfile,
+    isGuest,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export default AuthContext;
 
