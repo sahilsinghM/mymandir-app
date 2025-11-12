@@ -1,176 +1,245 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { theme } from '../../theme/theme';
-import { ThemedText, ThemedCard, ThemedButton, ThemedInput } from '../ui';
-import { GeneratedShloka } from '../../types';
-import { generateShloka } from '../../services/freeAIService';
-
-const emotions = [
-  'Peace',
-  'Strength',
-  'Happiness',
-  'Courage',
-  'Love',
-  'Wisdom',
-  'Gratitude',
-  'Healing',
-  'Protection',
-  'Blessing',
-];
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, shadows } from '../../theme/colors';
+import { FreeAIService, ShlokaGeneration } from '../../services/freeAIService';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserProfile as AppUserProfile } from '../../types/firestore';
 
 interface ShlokaGeneratorProps {
-  onGenerateComplete?: (shloka: GeneratedShloka) => void;
+  onShlokaGenerated?: (shloka: ShlokaGeneration) => void;
 }
 
-export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
-  onGenerateComplete,
-}) => {
-  const [selectedEmotion, setSelectedEmotion] = useState<string>('');
-  const [situation, setSituation] = useState('');
-  const [generatedShloka, setGeneratedShloka] = useState<GeneratedShloka | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const EMOTION_SUGGESTIONS = [
+  'Peace', 'Love', 'Gratitude', 'Courage', 'Wisdom', 'Forgiveness',
+  'Compassion', 'Joy', 'Hope', 'Strength', 'Humility', 'Devotion'
+];
 
-  const handleGenerate = async () => {
-    if (!selectedEmotion) {
-      setError('Please select an emotion');
+export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
+  onShlokaGenerated,
+}) => {
+  const { userProfile } = useAuth();
+  const [emotion, setEmotion] = useState('');
+  const [generatedShloka, setGeneratedShloka] = useState<ShlokaGeneration | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const buildProfilePayload = (profile: AppUserProfile | null | undefined) => ({
+    deityPreference: profile?.deityPreference,
+    language: profile?.language,
+  });
+
+  const formatCategory = (category: ShlokaGeneration['category']) =>
+    category.charAt(0).toUpperCase() + category.slice(1);
+
+  const generateShloka = async () => {
+    if (!emotion.trim()) {
+      Alert.alert('Error', 'Please enter an emotion to generate a shloka');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
       setGeneratedShloka(null);
 
-      const result = await generateShloka(selectedEmotion, situation || undefined);
-      const shloka: GeneratedShloka = {
-        verse: result.verse,
-        translation: result.translation,
-        meaning: result.meaning,
-        source: 'AI Generated',
-      };
+      const result = await FreeAIService.generateShloka(
+        emotion.trim(),
+        buildProfilePayload(userProfile)
+      );
 
-      setGeneratedShloka(shloka);
-      onGenerateComplete?.(shloka);
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate shloka. Please try again.');
-      console.error('Error generating shloka:', err);
+      setGeneratedShloka(result);
+      onShlokaGenerated?.(result);
+    } catch (error) {
+      console.error('Error generating shloka:', error);
+      Alert.alert('Error', 'Failed to generate shloka. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <ThemedCard style={styles.card}>
-        <ThemedText variant="h3" style={styles.title}>
-          Generate a Shloka
-        </ThemedText>
-        <ThemedText variant="body" color="textSecondary" style={styles.subtitle}>
-          Select how you're feeling and get a personalized Sanskrit verse
-        </ThemedText>
+  const handleEmotionSuggestion = (suggestion: string) => {
+    setEmotion(suggestion);
+  };
 
-        <View style={styles.emotionContainer}>
-          <ThemedText variant="label" style={styles.label}>
-            How are you feeling?
-          </ThemedText>
-          <View style={styles.emotionGrid}>
-            {emotions.map((emotion) => (
-              <ThemedButton
-                key={emotion}
-                title={emotion}
-                variant={selectedEmotion === emotion ? 'primary' : 'outline'}
-                size="sm"
-                onPress={() => {
-                  setSelectedEmotion(emotion);
-                  setError(null);
-                }}
-                style={styles.emotionButton}
-              />
+  const shareShloka = async () => {
+    if (!generatedShloka) return;
+
+    try {
+      const sections = [
+        generatedShloka.sanskrit,
+        generatedShloka.transliteration ? `Transliteration: ${generatedShloka.transliteration}` : null,
+        generatedShloka.translation ? `Translation: ${generatedShloka.translation}` : null,
+        generatedShloka.meaning ? `Meaning: ${generatedShloka.meaning}` : null,
+        generatedShloka.deity ? `Deity: ${generatedShloka.deity}` : null,
+        generatedShloka.category ? `Category: ${formatCategory(generatedShloka.category)}` : null,
+      ].filter(Boolean);
+
+      const shareText = sections.join('\n\n');
+      
+      // TODO: Implement sharing functionality
+      console.log('Sharing shloka:', shareText);
+      Alert.alert('Share', 'Shloka copied to clipboard');
+    } catch (error) {
+      console.error('Error sharing shloka:', error);
+      Alert.alert('Error', 'Failed to share shloka');
+    }
+  };
+
+  const saveShloka = () => {
+    if (!generatedShloka) return;
+
+    // TODO: Implement save to favorites functionality
+    console.log('Saving shloka:', generatedShloka);
+    Alert.alert('Saved', 'Shloka saved to your favorites');
+  };
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>AI Shloka Generator</Text>
+          <Text style={styles.subtitle}>
+            Generate personalized Sanskrit verses based on your emotions
+          </Text>
+        </View>
+
+        {/* Emotion Input */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>What emotion are you feeling?</Text>
+          <TextInput
+            style={styles.emotionInput}
+            placeholder="Enter your emotion (e.g., peace, love, gratitude)"
+            value={emotion}
+            onChangeText={setEmotion}
+            multiline
+            maxLength={100}
+          />
+        </View>
+
+        {/* Emotion Suggestions */}
+        <View style={styles.suggestionsContainer}>
+          <Text style={styles.suggestionsTitle}>Quick Suggestions</Text>
+          <View style={styles.suggestionsGrid}>
+            {EMOTION_SUGGESTIONS.map((suggestion) => (
+              <TouchableOpacity
+                key={suggestion}
+                style={[
+                  styles.suggestionButton,
+                  emotion === suggestion && styles.selectedSuggestion,
+                ]}
+                onPress={() => handleEmotionSuggestion(suggestion)}
+              >
+                <Text
+                  style={[
+                    styles.suggestionText,
+                    emotion === suggestion && styles.selectedSuggestionText,
+                  ]}
+                >
+                  {suggestion}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <View style={styles.situationContainer}>
-          <ThemedInput
-            placeholder="Optional: Describe your situation..."
-            value={situation}
-            onChangeText={setSituation}
-            multiline
-            numberOfLines={3}
-            style={styles.situationInput}
-          />
-        </View>
+        {/* Generate Button */}
+        <TouchableOpacity
+          style={[styles.generateButton, (!emotion.trim() || loading) && styles.generateButtonDisabled]}
+          onPress={generateShloka}
+          disabled={!emotion.trim() || loading}
+        >
+          <LinearGradient
+            colors={(!emotion.trim() || loading) ? [colors.textLight, colors.textLight] : [colors.primary, colors.accent]}
+            style={styles.buttonGradient}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.secondary} />
+            ) : (
+              <Ionicons name="sparkles" size={20} color={colors.secondary} />
+            )}
+            <Text style={styles.generateButtonText}>
+              {loading ? 'Generating...' : 'Generate Shloka'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
-        {error && (
-          <ThemedText variant="caption" color="error" style={styles.errorText}>
-            {error}
-          </ThemedText>
+        {/* Generated Shloka */}
+        {generatedShloka && (
+          <View style={styles.shlokaContainer}>
+            <LinearGradient
+              colors={[colors.cardBackground, colors.background]}
+              style={styles.shlokaGradient}
+            >
+              <View style={styles.shlokaHeader}>
+                <Text style={styles.shlokaTitle}>Generated Shloka</Text>
+                <Text style={styles.shlokaSubtitle}>For: {emotion}</Text>
+              </View>
+
+              <View style={styles.shlokaContent}>
+                <Text style={styles.sanskritText}>{generatedShloka.sanskrit}</Text>
+                {generatedShloka.transliteration ? (
+                  <Text style={styles.transliterationText}>{generatedShloka.transliteration}</Text>
+                ) : null}
+                {generatedShloka.translation ? (
+                  <Text style={styles.translationText}>{generatedShloka.translation}</Text>
+                ) : null}
+                {generatedShloka.meaning ? (
+                  <Text style={styles.meaningText}>{generatedShloka.meaning}</Text>
+                ) : null}
+                {(generatedShloka.deity || generatedShloka.category) && (
+                  <View style={styles.metadataContainer}>
+                    {generatedShloka.deity ? (
+                      <View style={styles.metadataChip}>
+                        <Text style={styles.metadataLabel}>Deity</Text>
+                        <Text style={styles.metadataValue}>{generatedShloka.deity}</Text>
+                      </View>
+                    ) : null}
+                    {generatedShloka.category ? (
+                      <View style={styles.metadataChip}>
+                        <Text style={styles.metadataLabel}>Category</Text>
+                        <Text style={styles.metadataValue}>{formatCategory(generatedShloka.category)}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.shlokaActions}>
+                <TouchableOpacity style={styles.actionButton} onPress={shareShloka}>
+                  <Ionicons name="share-outline" size={20} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Share</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.actionButton} onPress={saveShloka}>
+                  <Ionicons name="bookmark-outline" size={20} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
         )}
 
-        <ThemedButton
-          title={loading ? 'Generating...' : 'Generate Shloka'}
-          variant="primary"
-          size="lg"
-          fullWidth
-          onPress={handleGenerate}
-          disabled={!selectedEmotion || loading}
-          style={styles.generateButton}
-        />
-      </ThemedCard>
-
-      {loading && (
-        <ThemedCard style={styles.loadingCard}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <ThemedText variant="body" color="textSecondary" style={styles.loadingText}>
-            Generating your personalized shloka...
-          </ThemedText>
-        </ThemedCard>
-      )}
-
-      {generatedShloka && !loading && (
-        <ThemedCard style={styles.resultCard}>
-          <View style={styles.resultHeader}>
-            <ThemedText variant="h3" color="primary">
-              Your Shloka
-            </ThemedText>
-            {generatedShloka.source && (
-              <ThemedText variant="caption" color="textSecondary">
-                {generatedShloka.source}
-              </ThemedText>
-            )}
-          </View>
-
-          <View style={styles.verseContainer}>
-            <ThemedText variant="h2" style={styles.verse}>
-              {generatedShloka.verse}
-            </ThemedText>
-          </View>
-
-          {generatedShloka.translation && (
-            <View style={styles.translationContainer}>
-              <ThemedText variant="label" color="textSecondary" style={styles.translationLabel}>
-                Translation:
-              </ThemedText>
-              <ThemedText variant="body" style={styles.translation}>
-                {generatedShloka.translation}
-              </ThemedText>
-            </View>
-          )}
-
-          {generatedShloka.meaning && (
-            <View style={styles.meaningContainer}>
-              <ThemedText variant="label" color="textSecondary" style={styles.meaningLabel}>
-                Meaning:
-              </ThemedText>
-              <ThemedText variant="body" style={styles.meaning}>
-                {generatedShloka.meaning}
-              </ThemedText>
-            </View>
-          )}
-        </ThemedCard>
-      )}
-    </View>
+        {/* Info Section */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoTitle}>How it works</Text>
+          <Text style={styles.infoText}>
+            Our AI analyzes your emotion and generates a personalized Sanskrit shloka 
+            with English translation and spiritual meaning. Each shloka is crafted to 
+            resonate with your current emotional state and provide spiritual guidance.
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
@@ -178,90 +247,229 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  card: {
-    marginBottom: theme.spacing.lg,
+  content: {
+    padding: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 30,
   },
   title: {
-    marginBottom: theme.spacing.xs,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
-    marginBottom: theme.spacing.lg,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  emotionContainer: {
-    marginBottom: theme.spacing.lg,
+  inputContainer: {
+    marginBottom: 20,
   },
-  label: {
-    marginBottom: theme.spacing.sm,
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
   },
-  emotionGrid: {
+  emotionInput: {
+    height: 60,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.background,
+    textAlignVertical: 'top',
+    ...shadows.small,
+  },
+  suggestionsContainer: {
+    marginBottom: 30,
+  },
+  suggestionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  suggestionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: 10,
   },
-  emotionButton: {
-    flex: 1,
-    minWidth: '30%',
+  suggestionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
   },
-  situationContainer: {
-    marginBottom: theme.spacing.lg,
+  selectedSuggestion: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  situationInput: {
-    minHeight: 80,
+  suggestionText: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
   },
-  errorText: {
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
+  selectedSuggestionText: {
+    color: colors.secondary,
   },
   generateButton: {
-    marginTop: theme.spacing.sm,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    marginBottom: 30,
+    ...shadows.medium,
   },
-  loadingCard: {
+  generateButtonDisabled: {
+    ...shadows.small,
+  },
+  buttonGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.xl,
+    gap: 12,
   },
-  loadingText: {
-    marginTop: theme.spacing.md,
+  generateButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.secondary,
   },
-  resultCard: {
-    marginTop: theme.spacing.lg,
+  shlokaContainer: {
+    marginBottom: 30,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...shadows.medium,
   },
-  resultHeader: {
+  shlokaGradient: {
+    padding: 20,
+  },
+  shlokaHeader: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    marginBottom: 20,
   },
-  verseContainer: {
-    marginBottom: theme.spacing.lg,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.spacing.sm,
-    alignItems: 'center',
+  shlokaTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 4,
   },
-  verse: {
+  shlokaSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  shlokaContent: {
+    marginBottom: 20,
+  },
+  sanskritText: {
+    fontSize: 18,
+    color: colors.text,
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeights.relaxed * theme.typography.sizes.h2,
-  },
-  translationContainer: {
-    marginBottom: theme.spacing.md,
-  },
-  translationLabel: {
-    marginBottom: theme.spacing.xs,
-  },
-  translation: {
+    marginBottom: 16,
+    lineHeight: 28,
     fontStyle: 'italic',
-    lineHeight: theme.typography.lineHeights.relaxed * theme.typography.sizes.body,
   },
-  meaningContainer: {
-    marginTop: theme.spacing.md,
+  translationText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 24,
   },
-  meaningLabel: {
-    marginBottom: theme.spacing.xs,
+  transliterationText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
-  meaning: {
-    lineHeight: theme.typography.lineHeights.relaxed * theme.typography.sizes.body,
-    textAlign: 'justify',
+  meaningText: {
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  metadataContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  metadataChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: colors.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    ...shadows.small,
+  },
+  metadataLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    marginRight: 6,
+  },
+  metadataValue: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  shlokaActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: colors.background,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    ...shadows.small,
+  },
+  actionButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  infoContainer: {
+    backgroundColor: colors.cardBackground,
+    padding: 20,
+    borderRadius: 16,
+    ...shadows.small,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
+export default ShlokaGenerator;

@@ -1,343 +1,375 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
-import { theme } from '../../theme/theme';
-import { ThemedText, ThemedCard, ThemedButton } from '../../components/ui';
-import { getAIJyotishResponse, getAvailableModels, testModels, AIModel, PerformanceMetrics } from '../../services/aiService';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, shadows } from '../../theme/colors';
+import { FreeAIService, AIResponse as FreeAIResponse } from '../../services/freeAIService';
+import { OpenAIService, UserProfile as OpenAIUserProfile } from '../../services/openaiService';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserProfile as AppUserProfile } from '../../types/firestore';
 
-interface Message {
-  role: 'user' | 'assistant';
+interface ChatMessage {
+  id: string;
   text: string;
-  model?: string;
-  metrics?: PerformanceMetrics;
+  isUser: boolean;
+  timestamp: Date;
+  providerLabel?: string;
 }
 
-export const AIJyotishScreen: React.FC = () => {
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+const AIJyotishScreen: React.FC = () => {
+  const { userProfile } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      text: 'Namaste! I am your AI Jyotish guide. How can I help you with your spiritual and astrological questions today?',
+      isUser: false,
+      timestamp: new Date(),
+    },
+  ]);
+  const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<AIModel>('deepseek');
-  const [availableModels, setAvailableModels] = useState<Array<{ id: AIModel; name: string }>>([]);
-  const [showModelSelector, setShowModelSelector] = useState(false);
-  const [testingPerformance, setTestingPerformance] = useState(false);
 
-  useEffect(() => {
-    loadAvailableModels();
-  }, []);
+  const quickPrompts = OpenAIService.getQuickPrompts();
 
-  const loadAvailableModels = () => {
-    const models = getAvailableModels();
-    setAvailableModels(models.map((m) => ({ id: m.id, name: m.name })));
-    
-    // Set default to first available premium model
-    const premiumModel = models.find((m) => m.id !== 'free');
-    if (premiumModel) {
-      setSelectedModel(premiumModel.id);
+  const profilePayload = (profile: AppUserProfile | null | undefined) => ({
+    deityPreference: profile?.deityPreference,
+    language: profile?.language,
+    birthDate: profile?.birthDate,
+    birthTime: profile?.birthTime,
+    birthPlace: profile?.birthPlace,
+  });
+
+  const parseTimestamp = (timestamp?: string): Date => {
+    if (!timestamp) {
+      return new Date();
+    }
+    const parsed = new Date(timestamp);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
+  const getProviderLabel = (provider: FreeAIResponse['provider']): string => {
+    switch (provider) {
+      case 'huggingface':
+        return 'Powered by Hugging Face';
+      case 'cohere':
+        return 'Powered by Cohere';
+      case 'anthropic':
+        return 'Powered by Anthropic Claude';
+      case 'mock':
+      default:
+        return 'AI Guidance (Offline Mode)';
     }
   };
 
-  const handleSend = async () => {
-    if (!message.trim()) return;
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
 
-    const userMessage: Message = { role: 'user', text: message };
-    setMessages((prev) => [...prev, userMessage]);
-    const userQuery = message;
-    setMessage('');
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      text: trimmed,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
     setLoading(true);
 
+    const aiProfile = profilePayload(userProfile);
+
+    const tryOpenAiFallback = async (): Promise<{ text: string; timestamp: Date; providerLabel: string } | null> => {
+      try {
+        const openAiResponse = await OpenAIService.generateJyotishResponse(trimmed, aiProfile as OpenAIUserProfile);
+        return {
+          text: openAiResponse.content,
+          timestamp: parseTimestamp(openAiResponse.timestamp),
+          providerLabel: 'Powered by OpenAI',
+        };
+      } catch (fallbackError) {
+        console.warn('OpenAI fallback failed:', fallbackError);
+        return null;
+      }
+    };
+
     try {
-      const startTime = Date.now();
-      const response = await getAIJyotishResponse(
-        userQuery,
-        messages.length > 0 ? JSON.stringify(messages.slice(-3)) : '',
-        selectedModel
-      );
-      const responseTime = Date.now() - startTime;
+      let response: FreeAIResponse | null = null;
+      try {
+        response = await FreeAIService.generateJyotishResponse(trimmed, aiProfile);
+      } catch (freeError) {
+        console.error('Free AI providers failed:', freeError);
+      }
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        text: response.content,
-        model: response.model,
-        metrics: {
-          model: response.model,
-          responseTime: response.responseTime || responseTime,
-          tokensUsed: response.usage?.total_tokens,
-          timestamp: new Date(),
-        },
+      let aiText = response?.content || '';
+      let providerLabel = response ? getProviderLabel(response.provider) : 'AI Guidance';
+      let aiTimestamp = response ? parseTimestamp(response.timestamp) : new Date();
+
+      if (!response || response.provider === 'mock' || !aiText) {
+        const fallback = await tryOpenAiFallback();
+        if (fallback) {
+          aiText = fallback.text;
+          providerLabel = fallback.providerLabel;
+          aiTimestamp = fallback.timestamp;
+        }
+      }
+
+      if (!aiText) {
+        aiText = 'I am unable to respond right now. Please try again in a moment.';
+        providerLabel = 'System Message';
+      }
+
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: aiText,
+        isUser: false,
+        timestamp: aiTimestamp,
+        providerLabel,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error: any) {
-      const errorMessage: Message = {
-        role: 'assistant',
-        text: `Sorry, I encountered an error: ${error.message}. Please try again or switch to another model.`,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error generating response:', error);
+      Alert.alert('Error', 'Failed to get response. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTestPerformance = async () => {
-    if (!message.trim()) {
-      Alert.alert('Error', 'Please enter a message to test');
-      return;
-    }
-
-    setTestingPerformance(true);
-    setShowModelSelector(false);
-
-    try {
-      const results = await testModels(
-        message,
-        'You are an AI Jyotish assistant. Provide concise astrological guidance.',
-        ['deepseek', 'openai', 'free'].filter((m) =>
-          availableModels.some((am) => am.id === m)
-        ) as AIModel[]
-      );
-
-      // Show performance comparison
-      let comparisonText = 'Performance Test Results:\n\n';
-      Object.entries(results).forEach(([model, result]) => {
-        if ('error' in result) {
-          comparisonText += `${model.toUpperCase()}: Error - ${result.error}\n`;
-        } else {
-          comparisonText += `${result.model}: ${result.responseTime}ms`;
-          if (result.usage?.total_tokens) {
-            comparisonText += `, ${result.usage.total_tokens} tokens`;
-          }
-          comparisonText += '\n';
-        }
-      });
-
-      Alert.alert('Performance Test', comparisonText);
-
-      // Add test results to messages
-      const testMessage: Message = {
-        role: 'assistant',
-        text: `Performance test completed. Check the alert for details.\n\n` +
-          `Test Query: "${message}"\n\n` +
-          `You can compare responses from different models.`,
-      };
-      setMessages((prev) => [...prev, testMessage]);
-    } catch (error: any) {
-      Alert.alert('Error', `Performance test failed: ${error.message}`);
-    } finally {
-      setTestingPerformance(false);
-    }
+  const handleQuickPrompt = (prompt: string) => {
+    sendMessage(prompt);
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  const renderMessage = (message: ChatMessage) => (
+    <View
+      key={message.id}
+      style={[
+        styles.messageContainer,
+        message.isUser ? styles.userMessage : styles.aiMessage,
+      ]}
     >
-      <View style={styles.modelSelectorContainer}>
-        <ThemedText variant="caption" color="textSecondary" style={styles.modelLabel}>
-          Model:
-        </ThemedText>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modelScroll}>
-          {availableModels.map((model) => (
-            <TouchableOpacity
-              key={model.id}
-              style={[
-                styles.modelChip,
-                selectedModel === model.id && styles.modelChipActive,
-              ]}
-              onPress={() => setSelectedModel(model.id)}
-            >
-              <ThemedText
-                variant="caption"
-                weight={selectedModel === model.id ? 'semiBold' : 'normal'}
-                color={selectedModel === model.id ? 'textInverse' : 'textSecondary'}
-              >
-                {model.name}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <TouchableOpacity
-          style={styles.testButton}
-          onPress={handleTestPerformance}
-          disabled={testingPerformance || !message.trim()}
-        >
-          <ThemedText variant="caption" color="primary" weight="semiBold">
-            {testingPerformance ? 'Testing...' : 'Test'}
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        showsVerticalScrollIndicator={false}
+      <View
+        style={[
+          styles.messageBubble,
+          message.isUser ? styles.userBubble : styles.aiBubble,
+        ]}
       >
-        {messages.length === 0 ? (
-          <View style={styles.emptyState}>
-            <ThemedText variant="h3" color="primary" style={styles.emptyTitle}>
-              AI Jyotish
-            </ThemedText>
-            <ThemedText variant="body" color="textSecondary" style={styles.emptyText}>
-              Ask me anything about your horoscope, planetary positions, or seek spiritual guidance.
-            </ThemedText>
-            <ThemedText variant="caption" color="textLight" style={styles.emptySubtext}>
-              Select a model above to start. Use "Test" to compare performance across models.
-            </ThemedText>
-          </View>
-        ) : (
-          messages.map((msg, index) => (
-            <View
-              key={index}
-              style={[
-                styles.message,
-                msg.role === 'user' ? styles.userMessage : styles.assistantMessage,
-              ]}
-            >
-              <ThemedText
-                variant="body"
-                color={msg.role === 'user' ? 'textInverse' : 'text'}
-              >
-                {msg.text}
-              </ThemedText>
-              {msg.metrics && (
-                <View style={styles.metricsContainer}>
-                  <ThemedText variant="caption" color="textLight" style={styles.metricsText}>
-                    {msg.model} • {msg.metrics.responseTime}ms
-                    {msg.metrics.tokensUsed && ` • ${msg.metrics.tokensUsed} tokens`}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-          ))
+        {!message.isUser && message.providerLabel && (
+          <Text style={styles.providerLabel}>{message.providerLabel}</Text>
         )}
-      </ScrollView>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Ask a question..."
-          placeholderTextColor={theme.colors.textLight}
-          value={message}
-          onChangeText={setMessage}
-          multiline
-          editable={!loading}
-        />
-        <ThemedButton
-          title="Send"
-          variant="primary"
-          size="md"
-          onPress={handleSend}
-          loading={loading}
-          disabled={!message.trim() || loading}
-        />
+        <Text
+          style={[
+            styles.messageText,
+            message.isUser ? styles.userMessageText : styles.aiMessageText,
+          ]}
+        >
+          {message.text}
+        </Text>
+        <Text style={styles.timestamp}>
+          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
       </View>
-    </KeyboardAvoidingView>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[colors.gradientLight, colors.background]}
+        style={styles.gradient}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>AI Jyotish</Text>
+          <Text style={styles.subtitle}>Your personal astrologer</Text>
+        </View>
+
+        {/* Chat Messages */}
+        <ScrollView style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
+          {messages.map(renderMessage)}
+          {loading && (
+            <View style={[styles.messageContainer, styles.aiMessage]}>
+              <View style={[styles.messageBubble, styles.aiBubble]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.loadingText}>AI is thinking...</Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Quick Prompts */}
+        <View style={styles.quickPromptsContainer}>
+          <Text style={styles.quickPromptsTitle}>Quick Questions</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {quickPrompts.map((prompt, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.quickPromptButton}
+                onPress={() => handleQuickPrompt(prompt)}
+                disabled={loading}
+              >
+                <Text style={styles.quickPromptText}>{prompt}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Input Area */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Ask your astrological question..."
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            editable={!loading}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
+            onPress={() => sendMessage(inputText)}
+            disabled={!inputText.trim() || loading}
+          >
+            <Ionicons name="send" size={20} color={colors.secondary} />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+  },
+  gradient: {
+    flex: 1,
+  },
+  header: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
   },
   messagesContainer: {
     flex: 1,
+    paddingHorizontal: 16,
   },
-  messagesContent: {
-    padding: theme.spacing.lg,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.xxl,
-  },
-  emptyTitle: {
-    marginBottom: theme.spacing.md,
-  },
-  emptyText: {
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  message: {
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
-    maxWidth: '80%',
+  messageContainer: {
+    marginVertical: 8,
   },
   userMessage: {
-    backgroundColor: theme.colors.primary,
-    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
   },
-  assistantMessage: {
-    backgroundColor: theme.colors.backgroundSecondary,
-    alignSelf: 'flex-start',
+  aiMessage: {
+    alignItems: 'flex-start',
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: 16,
+    borderRadius: 20,
+    ...shadows.small,
+  },
+  providerLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 6,
+  },
+  userBubble: {
+    backgroundColor: colors.primary,
+    borderBottomRightRadius: 4,
+  },
+  aiBubble: {
+    backgroundColor: colors.cardBackground,
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  userMessageText: {
+    color: colors.secondary,
+  },
+  aiMessageText: {
+    color: colors.text,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  quickPromptsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  quickPromptsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  quickPromptButton: {
+    backgroundColor: colors.cardBackground,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
+  },
+  quickPromptText: {
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.backgroundSecondary,
-    gap: theme.spacing.sm,
+    padding: 16,
     alignItems: 'flex-end',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    maxHeight: 100,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.md,
-  },
-  modelSelectorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    gap: theme.spacing.sm,
-  },
-  modelLabel: {
-    marginRight: theme.spacing.xs,
-  },
-  modelScroll: {
-    flex: 1,
-  },
-  modelChip: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.background,
-    marginRight: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  modelChipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  testButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  metricsContainer: {
-    marginTop: theme.spacing.xs,
-    paddingTop: theme.spacing.xs,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: colors.border,
   },
-  metricsText: {
-    fontStyle: 'italic',
+  textInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.background,
+    maxHeight: 100,
+    marginRight: 12,
   },
-  emptySubtext: {
-    marginTop: theme.spacing.sm,
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.lg,
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.small,
+  },
+  sendButtonDisabled: {
+    backgroundColor: colors.textLight,
   },
 });
 
+export default AIJyotishScreen;

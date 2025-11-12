@@ -1,17 +1,20 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from './src/contexts/AuthContext';
-import { AppNavigator } from './src/navigation/AppNavigator';
-import { theme } from './src/theme/theme';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-export default function App() {
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+import { AuthProvider } from './src/contexts/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
+
+const App: React.FC = () => (
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <SafeAreaProvider>
       <AuthProvider>
+        <StatusBar style="light" />
         <AppNavigator />
-        <StatusBar style="light" backgroundColor={theme.colors.primary} />
       </AuthProvider>
-    </GestureHandlerRootView>
-  );
-}
+    </SafeAreaProvider>
+  </GestureHandlerRootView>
+);
+
+export default App;

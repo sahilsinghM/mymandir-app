@@ -1,63 +1,49 @@
 import Constants from 'expo-constants';
 
-/**
- * Environment configuration
- * Reads from app.config.ts extra fields or environment variables
- */
+interface EnvConfig {
+  firebaseApiKey: string;
+  firebaseAuthDomain: string;
+  firebaseProjectId: string;
+  firebaseStorageBucket: string;
+  firebaseMessagingSenderId: string;
+  firebaseAppId: string;
+  openaiApiKey: string;
+  astroApiKey: string;
+  astrologyApiKey: string;
+  divineApiKey: string;
+  youtubeApiKey: string;
+  prokeralaClientId: string;
+  prokeralaClientSecret: string;
+  huggingfaceApiKey: string;
+  cohereApiKey: string;
+  anthropicApiKey: string;
+}
 
-const getEnvVar = (key: string, defaultValue?: string): string => {
-  const value = Constants.expoConfig?.extra?.[key] || process.env[key];
-  if (!value && !defaultValue) {
+export const getEnvVar = (key: keyof EnvConfig): string => {
+  const value = Constants.expoConfig?.extra?.[key];
+  if (!value) {
     console.warn(`Environment variable ${key} is not set`);
+    return '';
   }
-  return value || defaultValue || '';
+  return value;
 };
 
-export const env = {
-  // Firebase
-  firebase: {
-    apiKey: getEnvVar('firebaseApiKey'),
-    authDomain: getEnvVar('firebaseAuthDomain'),
-    projectId: getEnvVar('firebaseProjectId'),
-    storageBucket: getEnvVar('firebaseStorageBucket'),
-    messagingSenderId: getEnvVar('firebaseMessagingSenderId'),
-    appId: getEnvVar('firebaseAppId'),
-  },
-  
-  // OpenAI
-  openai: {
-    apiKey: getEnvVar('openaiApiKey'),
-  },
-  
-  // DeepSeek
-  deepseek: {
-    apiKey: getEnvVar('deepseekApiKey'),
-  },
-  
-  // Astrology APIs
-  astrology: {
-    astroApiKey: getEnvVar('astroApiKey'),
-    prokeralaClientId: getEnvVar('prokeralaClientId'),
-    prokeralaClientSecret: getEnvVar('prokeralaClientSecret'),
-    divineApiKey: getEnvVar('divineApiKey'),
-    astrologyApiKey: getEnvVar('astrologyApiKey'),
-  },
-  
-  // YouTube
-  youtube: {
-    apiKey: getEnvVar('youtubeApiKey'),
-  },
-  
-  // Free AI Alternatives
-  ai: {
-    huggingfaceApiKey: getEnvVar('huggingfaceApiKey'),
-    cohereApiKey: getEnvVar('cohereApiKey'),
-    anthropicApiKey: getEnvVar('anthropicApiKey'),
-  },
-  
-  // App config
-  app: {
-    isDevelopment: __DEV__,
-  },
-} as const;
+export const env: EnvConfig = {
+  firebaseApiKey: getEnvVar('firebaseApiKey'),
+  firebaseAuthDomain: getEnvVar('firebaseAuthDomain'),
+  firebaseProjectId: getEnvVar('firebaseProjectId'),
+  firebaseStorageBucket: getEnvVar('firebaseStorageBucket'),
+  firebaseMessagingSenderId: getEnvVar('firebaseMessagingSenderId'),
+  firebaseAppId: getEnvVar('firebaseAppId'),
+  openaiApiKey: getEnvVar('openaiApiKey'),
+  astroApiKey: getEnvVar('astroApiKey'),
+  astrologyApiKey: getEnvVar('astrologyApiKey'),
+  divineApiKey: getEnvVar('divineApiKey'),
+  youtubeApiKey: getEnvVar('youtubeApiKey'),
+  prokeralaClientId: getEnvVar('prokeralaClientId'),
+  prokeralaClientSecret: getEnvVar('prokeralaClientSecret'),
+  huggingfaceApiKey: getEnvVar('huggingfaceApiKey'),
+  cohereApiKey: getEnvVar('cohereApiKey'),
+  anthropicApiKey: getEnvVar('anthropicApiKey'),
+};
 
