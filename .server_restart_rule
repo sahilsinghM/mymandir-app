@@ -1,0 +1,32 @@
+# Server Restart Rule - MANDATORY
+# ALWAYS restart server after ANY code/config changes
+# User requirement: Server must auto-restart, don't ask them to do it
+
+RULES:
+1. After ANY file edit (code, config, tests):
+   - Automatically restart server using: pkill -f "expo start"; pkill -f "nodemon"; pkill -f "node.*expo"; npm run dev
+   - Run in background
+   - Never ask user to restart manually
+
+2. Server should always be running in background
+
+3. Check server status before starting:
+   - Kill existing processes first
+   - Then start fresh
+
+4. ALWAYS verify server is running and report:
+   - Check ports: 8081 (Metro), 19006 (Web), 19000 (Expo dev)
+   - Use: lsof -ti:8081 to check if running
+   - Use: curl http://localhost:8081 to ping/test
+   - Report: "✅ Server running on port X" or "❌ Server not running"
+   - Report: Exact ports where server is accessible
+   - Wait 10-15 seconds after start before checking (server needs time to start)
+
+5. Ping server to verify it's actually responding:
+   - curl -s http://localhost:8081 > /dev/null && echo "✅ Server responding"
+   - If not responding, restart again
+
+6. Always provide status:
+   - "✅ Server running on port 8081 (Metro) and 19006 (Web)"
+   - Include exact URLs user can access
+

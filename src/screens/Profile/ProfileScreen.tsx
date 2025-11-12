@@ -9,19 +9,27 @@ export const ProfileScreen: React.FC = () => {
   const { user, signOut, isGuest } = useAuth();
 
   const handleSignOut = async () => {
+    console.log('🔘 Sign Out button pressed');
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => console.log('❌ Sign out cancelled'),
+        },
         {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('🟡 Starting sign out process...');
               await signOut();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to sign out');
+              console.log('✅ Sign out completed successfully');
+            } catch (error: any) {
+              console.error('❌ Sign out error:', error);
+              Alert.alert('Error', error.message || 'Failed to sign out');
             }
           },
         },

@@ -1,4 +1,5 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
+import 'dotenv/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const mergedConfig: ExpoConfig = {
@@ -21,6 +22,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: 'com.mymandir.app',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'com.mymandir.app',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#FF9933',
@@ -35,7 +48,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     web: {
       favicon: './assets/favicon.png',
+      bundler: 'metro',
     },
+    scheme: 'com.mymandir.app',
     plugins: [
       'expo-font',
       'expo-av',
@@ -46,6 +61,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           color: '#FF9933',
         },
       ],
+      'expo-web-browser',
     ],
     extra: {
       ...config.extra,
@@ -69,6 +85,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
       cohereApiKey: process.env.COHERE_API_KEY || '',
       anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+      googleClientId:
+        process.env.GOOGLE_CLIENT_ID ||
+        '146352979259-cv2f4dj37trjlsflgo2elannchg6jbdm.apps.googleusercontent.com',
     },
   };
 

@@ -80,11 +80,11 @@ export const getWeeklyHoroscope = async (
       sign,
       date: data.current_date || new Date().toISOString().split('T')[0],
       prediction: data.description,
-      type: 'weekly',
+      type: 'weekly' as const,
     };
   } catch (error) {
     console.error('Error fetching weekly horoscope:', error);
-    return getFallbackHoroscope(sign);
+    return getFallbackHoroscope(sign, 'weekly');
   }
 };
 
@@ -95,18 +95,22 @@ export const getMonthlyHoroscope = async (
   sign: ZodiacSign
 ): Promise<Horoscope> => {
   try {
-    // AztroAPI doesn't have monthly, so we'll use weekly for now
-    return getWeeklyHoroscope(sign);
+    // AztroAPI doesn't have monthly endpoint, so we'll use weekly data but mark as monthly
+    const weeklyData = await getWeeklyHoroscope(sign);
+    return {
+      ...weeklyData,
+      type: 'monthly' as const,
+    };
   } catch (error) {
     console.error('Error fetching monthly horoscope:', error);
-    return getFallbackHoroscope(sign);
+    return getFallbackHoroscope(sign, 'monthly');
   }
 };
 
 /**
  * Fallback horoscope when API fails
  */
-const getFallbackHoroscope = (sign: ZodiacSign): Horoscope => {
+const getFallbackHoroscope = (sign: ZodiacSign, type: Horoscope['type'] = 'daily'): Horoscope => {
   const predictions: Record<ZodiacSign, string> = {
     Aries: `Dear ${sign}, today the stars align to bring you clarity and purpose. Your natural leadership shines through, and opportunities await those bold enough to take them. Trust your instincts and move forward with confidence.`,
     Taurus: `For ${sign}, this is a time of stability and grounding. The universe supports your practical approach to life. Financial matters may improve, and relationships deepen. Stay patient and persistent in your endeavors.`,
@@ -126,7 +130,7 @@ const getFallbackHoroscope = (sign: ZodiacSign): Horoscope => {
     sign,
     date: new Date().toISOString().split('T')[0],
     prediction: predictions[sign] || `Today is a day for ${sign} to focus on spiritual growth and inner peace. Trust in the divine timing of events in your life.`,
-    type: 'daily',
+    type,
   };
 };
 
@@ -147,4 +151,3 @@ export const getZodiacSign = (month: number, day: number): ZodiacSign => {
   if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'Aquarius';
   return 'Pisces';
 };
-

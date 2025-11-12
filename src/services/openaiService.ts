@@ -56,22 +56,38 @@ export const generateText = async (
           },
         ],
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1000,
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+      let errorMessage = `OpenAI API error: ${response.status}`;
+      try {
+        const error = await response.json();
+        errorMessage = error.error?.message || error.message || errorMessage;
+      } catch (e) {
+        const errorText = await response.text();
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     const data: OpenAIResponse = await response.json();
 
     if (data.error) {
-      throw new Error(data.error.message);
+      throw new Error(data.error.message || 'Unknown OpenAI API error');
     }
 
-    return data.choices[0]?.message?.content || 'No response generated';
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error('No response generated from OpenAI');
+    }
+
+    const content = data.choices[0]?.message?.content;
+    if (!content || content.trim().length === 0) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    return content;
   } catch (error: any) {
     console.error('Error calling OpenAI API:', error);
     throw error;
@@ -127,15 +143,23 @@ export const getAIJyotishResponse = async (
 ): Promise<string> => {
   const systemPrompt = `You are an AI Jyotish (astrologer) assistant with deep knowledge of Vedic astrology, planetary positions, and spiritual guidance. 
 Provide helpful, accurate, and compassionate responses about horoscopes, planetary influences, and spiritual matters.
-Keep responses concise and practical.`;
+Keep responses concise and practical, focusing on Vedic astrology principles and spiritual wisdom.`;
 
   const prompt = context
     ? `Context: ${context}\n\nQuestion: ${userQuery}`
     : userQuery;
 
   try {
-    return await generateText(prompt, systemPrompt);
+    const response = await generateText(prompt, systemPrompt);
+    
+    // Ensure we have a valid response
+    if (!response || response.trim().length === 0) {
+      throw new Error('Received empty response from OpenAI');
+    }
+    
+    return response;
   } catch (error: any) {
+    console.error('OpenAI Jyotish error:', error);
     throw new Error(`Failed to get AI Jyotish response: ${error.message}`);
   }
 };

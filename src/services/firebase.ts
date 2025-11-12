@@ -48,13 +48,35 @@ export const initializeFirebase = (): {
 
 // Get Firebase services (will initialize if needed)
 export const getFirebaseAuth = (): Auth => {
+  console.log('🔍 getFirebaseAuth called', { authExists: !!auth });
+  
   if (!auth) {
+    console.log('🔍 Firebase auth not initialized, checking config...');
+    console.log('🔍 Firebase config check:', {
+      apiKey: env.firebase.apiKey ? 'SET' : 'MISSING',
+      apiKeyLength: env.firebase.apiKey?.length || 0,
+      isPlaceholder: env.firebase.apiKey === 'your_firebase_api_key_here',
+      projectId: env.firebase.projectId ? 'SET' : 'MISSING',
+    });
+    
     // Check if Firebase config is available
-    if (!env.firebase.apiKey || env.firebase.apiKey === 'your_firebase_api_key_here') {
-      throw new Error('Firebase is not configured. Please set up Firebase credentials.');
+    if (!env.firebase.apiKey || env.firebase.apiKey === 'your_firebase_api_key_here' || env.firebase.apiKey.trim().length === 0) {
+      const error = new Error('Firebase is not configured. Please set up Firebase credentials in .env file.');
+      console.error('❌ Firebase configuration error:', error.message);
+      throw error;
     }
-    initializeFirebase();
+    
+    console.log('🟡 Initializing Firebase...');
+    try {
+      initializeFirebase();
+      console.log('✅ Firebase initialized successfully');
+    } catch (initError: any) {
+      console.error('❌ Firebase initialization failed:', initError);
+      throw new Error(`Failed to initialize Firebase: ${initError.message}`);
+    }
   }
+  
+  console.log('✅ Returning Firebase auth instance');
   return auth!;
 };
 

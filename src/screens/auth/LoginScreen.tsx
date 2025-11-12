@@ -21,25 +21,48 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, signInAsGuest } = useAuth();
+  const { signIn, signUp, signInAsGuest, signInWithGoogle } = useAuth();
 
   const handleSubmit = async () => {
+    console.log('🔘 handleSubmit called', { email, passwordLength: password.length, isSignUp });
+    
     if (!email || !password) {
+      console.warn('⚠️ Validation failed: Missing email or password');
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+    if (password.length < 6) {
+      console.warn('⚠️ Validation failed: Password too short');
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
     try {
+      console.log('✅ Validation passed, starting auth process...');
       setLoading(true);
+      console.log(`📝 ${isSignUp ? 'Sign-up' : 'Sign-in'} attempt:`, { email, isSignUp, passwordLength: password.length });
+      
       if (isSignUp) {
+        console.log('📝 Calling signUp function...');
         await signUp(email, password);
-        Alert.alert('Success', 'Account created successfully!');
+        console.log('✅ Sign-up successful, user should be navigated automatically');
+        // Don't show alert - navigation happens automatically via AuthContext
       } else {
+        console.log('📝 Calling signIn function...');
         await signIn(email, password);
+        console.log('✅ Sign-in successful, user should be navigated automatically');
       }
     } catch (error: any) {
+      console.error('❌ Auth error caught in handleSubmit:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
       Alert.alert('Error', error.message || 'Authentication failed');
     } finally {
+      console.log('🔚 handleSubmit finally block - setting loading to false');
       setLoading(false);
     }
   };
@@ -47,8 +70,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      // TODO: Implement Google sign-in
-      Alert.alert('Info', 'Google sign-in coming soon');
+      await signInWithGoogle();
+      // Success - user will be navigated automatically by AuthContext
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Google sign-in failed');
     } finally {
@@ -103,7 +126,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               size="lg"
               fullWidth
               loading={loading}
-              onPress={handleSubmit}
+              disabled={loading}
+              onPress={() => {
+                console.log('🔘 Sign Up/In button pressed', { email, isSignUp, loading });
+                handleSubmit();
+              }}
               style={styles.submitButton}
             />
 

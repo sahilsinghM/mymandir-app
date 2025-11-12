@@ -1,7 +1,9 @@
 import '@testing-library/jest-native/extend-expect';
-import { server } from './src/__tests__/utils/mockApis';
 
-// Mock expo modules
+// Mock fetch globally for API tests (only if needed)
+global.fetch = jest.fn();
+
+// Mock expo modules that are not available in test environment
 jest.mock('expo-font', () => ({
   loadAsync: jest.fn(),
   isLoaded: jest.fn(() => true),
@@ -28,6 +30,8 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(),
   cancelAllScheduledNotificationsAsync: jest.fn(),
   getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'mock-token' })),
+  setNotificationHandler: jest.fn(),
+  cancelScheduledNotificationAsync: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('expo-sharing', () => ({
@@ -44,61 +48,50 @@ jest.mock('react-native-paper', () => {
   };
 });
 
-// Mock expo-notifications
-jest.mock('expo-notifications', () => ({
-  setNotificationHandler: jest.fn(),
-  getPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
-  requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
-  scheduleNotificationAsync: jest.fn(() => Promise.resolve('notification-id')),
-  cancelAllScheduledNotificationsAsync: jest.fn(() => Promise.resolve()),
-  cancelScheduledNotificationAsync: jest.fn(() => Promise.resolve()),
-}));
+// NO FIREBASE MOCKS - Use real Firebase with actual configuration
+// Tests will use real Firebase from .env file
+console.log('🧪 Running tests with REAL Firebase (no mocks)');
+console.log('   Make sure .env file has Firebase credentials');
 
-// Mock Firebase modules
-jest.mock('firebase/app', () => ({
-  initializeApp: jest.fn(() => ({})),
-}));
+// Mock Constants to use real env vars from .env file
+jest.mock('expo-constants', () => {
+  require('dotenv/config');
+  const realEnv = process.env;
 
-jest.mock('firebase/auth', () => ({
-  getAuth: jest.fn(() => ({})),
-  GoogleAuthProvider: jest.fn(),
-  signInWithPopup: jest.fn(),
-  signInWithPhoneNumber: jest.fn(),
-  RecaptchaVerifier: jest.fn(),
-  signOut: jest.fn(),
-  onAuthStateChanged: jest.fn(),
-}));
+  const withFallback = (envKey: string, fallback: string) => realEnv[envKey] || fallback;
+  const setCamelCase = (envKey: string, camelKey: string, fallback: string) => {
+    const value = withFallback(envKey, fallback);
+    process.env[camelKey] = value;
+    return value;
+  };
 
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
-  collection: jest.fn(),
-  doc: jest.fn(),
-  getDoc: jest.fn(),
-  setDoc: jest.fn(),
-  updateDoc: jest.fn(),
-  deleteDoc: jest.fn(),
-  addDoc: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  orderBy: jest.fn(),
-  limit: jest.fn(),
-  getDocs: jest.fn(),
-  onSnapshot: jest.fn(),
-  Timestamp: jest.fn(),
-}));
-
-jest.mock('firebase/storage', () => ({
-  getStorage: jest.fn(() => ({})),
-  ref: jest.fn(),
-  uploadBytes: jest.fn(),
-  getDownloadURL: jest.fn(),
-  deleteObject: jest.fn(),
-}));
-
-// Setup MSW
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+  return {
+    default: {
+      expoConfig: {
+        extra: {
+          firebaseApiKey: setCamelCase('FIREBASE_API_KEY', 'firebaseApiKey', 'test-firebase-api-key'),
+          firebaseAuthDomain: setCamelCase('FIREBASE_AUTH_DOMAIN', 'firebaseAuthDomain', 'test-auth-domain'),
+          firebaseProjectId: setCamelCase('FIREBASE_PROJECT_ID', 'firebaseProjectId', 'test-project-id'),
+          firebaseStorageBucket: setCamelCase('FIREBASE_STORAGE_BUCKET', 'firebaseStorageBucket', 'test-storage-bucket'),
+          firebaseMessagingSenderId: setCamelCase('FIREBASE_MESSAGING_SENDER_ID', 'firebaseMessagingSenderId', 'test-messaging-sender-id'),
+          firebaseAppId: setCamelCase('FIREBASE_APP_ID', 'firebaseAppId', 'test-firebase-app-id'),
+          openaiApiKey: setCamelCase('OPENAI_API_KEY', 'openaiApiKey', 'test-openai-key'),
+          deepseekApiKey: setCamelCase('DEEPSEEK_API_KEY', 'deepseekApiKey', 'test-deepseek-key'),
+          astroApiKey: setCamelCase('ASTRO_API_KEY', 'astroApiKey', 'test-astro-key'),
+          astrologyApiKey: setCamelCase('ASTROLOGY_API_KEY', 'astrologyApiKey', 'test-astrology-key'),
+          divineApiKey: setCamelCase('DIVINE_API_KEY', 'divineApiKey', 'test-divine-key'),
+          youtubeApiKey: setCamelCase('YOUTUBE_API_KEY', 'youtubeApiKey', 'test-youtube-key'),
+          prokeralaClientId: setCamelCase('PROKERALA_CLIENT_ID', 'prokeralaClientId', 'test-prokerala-client'),
+          prokeralaClientSecret: setCamelCase('PROKERALA_CLIENT_SECRET', 'prokeralaClientSecret', 'test-prokerala-secret'),
+          huggingfaceApiKey: setCamelCase('HUGGINGFACE_API_KEY', 'huggingfaceApiKey', 'test-hf-key'),
+          cohereApiKey: setCamelCase('COHERE_API_KEY', 'cohereApiKey', 'test-cohere-key'),
+          anthropicApiKey: setCamelCase('ANTHROPIC_API_KEY', 'anthropicApiKey', 'test-anthropic-key'),
+          googleClientId: setCamelCase('GOOGLE_CLIENT_ID', 'googleClientId', 'test-google-client-id'),
+        },
+      },
+    },
+  };
+});
 
 // Global test timeout
-jest.setTimeout(10000);
+jest.setTimeout(30000); // Increased timeout for real Firebase operations

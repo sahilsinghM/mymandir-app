@@ -12,6 +12,8 @@ import { HoroscopeScreen } from '../screens/Horoscope/HoroscopeScreen';
 import { AIJyotishScreen } from '../screens/AIJyotish/AIJyotishScreen';
 import { MantraPlayerScreen } from '../screens/MantraPlayer/MantraPlayerScreen';
 import { ProfileScreen } from '../screens/Profile/ProfileScreen';
+import { PanchangScreen } from '../screens/Panchang/PanchangScreen';
+import { ExpertJyotishScreen } from '../screens/ExpertJyotish/ExpertJyotishScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList, MainTabParamList } from '../types/navigation';
 
@@ -56,6 +58,15 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
+        name="Panchang"
+        component={PanchangScreen}
+        options={{
+          title: 'Panchang',
+          tabBarLabel: 'Panchang',
+          headerShown: true,
+        }}
+      />
+      <Tab.Screen
         name="AIJyotish"
         component={AIJyotishScreen}
         options={{
@@ -69,6 +80,14 @@ const MainTabs = () => {
         options={{
           title: 'Mantras',
           tabBarLabel: 'Mantras',
+        }}
+      />
+      <Tab.Screen
+        name="ExpertJyotish"
+        component={ExpertJyotishScreen}
+        options={{
+          title: 'Expert Jyotish',
+          tabBarLabel: 'Experts',
         }}
       />
       <Tab.Screen
@@ -86,6 +105,16 @@ const MainTabs = () => {
 // Root Stack Navigator - handles auth flow
 export const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
+
+  // Debug logging for navigation
+  React.useEffect(() => {
+    console.log('🧭 Navigation State:', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email,
+      loading,
+    });
+  }, [user, loading]);
 
   if (loading) {
     return (

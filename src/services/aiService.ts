@@ -36,31 +36,33 @@ Keep responses concise and practical.`;
 export const getAvailableModels = (): ModelConfig[] => {
   const models: ModelConfig[] = [];
 
-  // Check OpenAI
+  // Check OpenAI (Priority model)
   const openaiAvailable =
     env.openai.apiKey &&
     env.openai.apiKey !== 'your_openai_api_key_here' &&
-    env.openai.apiKey !== '';
+    env.openai.apiKey !== '' &&
+    env.openai.apiKey.trim().length > 0;
   
   if (openaiAvailable) {
     models.push({
       id: 'openai',
-      name: 'OpenAI',
+      name: 'OpenAI (Primary)',
       models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'],
       available: true,
     });
   }
 
-  // Check DeepSeek
+  // Check DeepSeek (Backup)
   const deepseekAvailable =
     env.deepseek.apiKey &&
     env.deepseek.apiKey !== 'your_deepseek_api_key_here' &&
-    env.deepseek.apiKey !== '';
+    env.deepseek.apiKey !== '' &&
+    env.deepseek.apiKey.trim().length > 0;
   
   if (deepseekAvailable) {
     models.push({
       id: 'deepseek',
-      name: 'DeepSeek',
+      name: 'DeepSeek (Backup)',
       models: ['deepseek-chat', 'deepseek-coder'],
       available: true,
     });
@@ -77,48 +79,57 @@ export const getAvailableModels = (): ModelConfig[] => {
 };
 
 /**
- * Generate text using specified AI model
+ * Generate text using specified AI model with automatic fallback
+ * Priority: OpenAI → DeepSeek → Free AI
  */
 export const generateWithModel = async (
   prompt: string,
   systemPrompt?: string,
-  model: AIModel = 'deepseek',
+  model: AIModel = 'openai',
   specificModel?: string
 ): Promise<AIResponse> => {
   const startTime = Date.now();
 
-  try {
-    switch (model) {
-      case 'openai':
-        const openaiResponse = await openAIGenerateText(prompt, systemPrompt);
-        return {
-          content: openaiResponse,
-          model: specificModel || 'gpt-3.5-turbo',
-          responseTime: Date.now() - startTime,
-        };
-      
-      case 'deepseek':
+  // Try OpenAI first (if requested or as default), then DeepSeek, then Free AI
+  if (model === 'openai') {
+    try {
+      const openaiResponse = await openAIGenerateText(prompt, systemPrompt);
+      return {
+        content: openaiResponse,
+        model: specificModel || 'gpt-3.5-turbo',
+        responseTime: Date.now() - startTime,
+      };
+    } catch (error: any) {
+      console.error('OpenAI failed, trying DeepSeek fallback:', error.message);
+      // Fallback to DeepSeek
+      try {
         return await deepSeekGenerateText(
           prompt,
           systemPrompt,
           (specificModel as DeepSeekModel) || 'deepseek-chat'
         );
-      
-      case 'free':
-      default:
+      } catch (deepseekError: any) {
+        console.error('DeepSeek also failed, using Free AI fallback:', deepseekError.message);
+        // Fallback to Free AI
         const freeResponse = await freeAIGenerateText(prompt, systemPrompt);
         return {
           content: freeResponse,
-          model: 'free-ai',
+          model: 'free-ai-fallback',
           responseTime: Date.now() - startTime,
         };
+      }
     }
-  } catch (error: any) {
-    console.error(`Error with ${model}:`, error);
-    
-    // Fallback to free AI if premium models fail
-    if (model !== 'free') {
-      console.log('Falling back to free AI');
+  }
+
+  if (model === 'deepseek') {
+    try {
+      return await deepSeekGenerateText(
+        prompt,
+        systemPrompt,
+        (specificModel as DeepSeekModel) || 'deepseek-chat'
+      );
+    } catch (error: any) {
+      console.error('DeepSeek failed, using Free AI fallback:', error.message);
       const freeResponse = await freeAIGenerateText(prompt, systemPrompt);
       return {
         content: freeResponse,
@@ -126,62 +137,93 @@ export const generateWithModel = async (
         responseTime: Date.now() - startTime,
       };
     }
-    
-    throw error;
+  }
+
+  // Free AI or default
+  try {
+    const freeResponse = await freeAIGenerateText(prompt, systemPrompt);
+    return {
+      content: freeResponse,
+      model: 'free-ai',
+      responseTime: Date.now() - startTime,
+    };
+  } catch (error: any) {
+    throw new Error(`All AI models failed: ${error.message}`);
   }
 };
 
 /**
- * Get AI Jyotish response using specified model
+ * Get AI Jyotish response using specified model with automatic fallback
+ * Priority: OpenAI → DeepSeek → Free AI
  */
 export const getAIJyotishResponse = async (
   userQuery: string,
   context: string = '',
-  model: AIModel = 'deepseek',
+  model: AIModel = 'openai',
   specificModel?: string
 ): Promise<AIResponse> => {
   const prompt = context ? `Context: ${context}\n\nQuestion: ${userQuery}` : userQuery;
+  const startTime = Date.now();
 
-  try {
-    switch (model) {
-      case 'openai':
-        const openaiResponse = await openAIGetResponse(userQuery, context);
-        return {
-          content: openaiResponse,
-          model: specificModel || 'gpt-3.5-turbo',
-          responseTime: 0, // OpenAI service doesn't track time
-        };
-      
-      case 'deepseek':
+  // If explicitly requesting a model, use it with fallback
+  if (model === 'openai') {
+    try {
+      const openaiResponse = await openAIGetResponse(userQuery, context);
+      return {
+        content: openaiResponse,
+        model: specificModel || 'gpt-3.5-turbo',
+        responseTime: Date.now() - startTime,
+      };
+    } catch (error: any) {
+      console.error('OpenAI failed, trying DeepSeek fallback:', error.message);
+      // Fallback to DeepSeek
+      try {
         return await deepSeekGetResponse(
           userQuery,
           context,
           (specificModel as DeepSeekModel) || 'deepseek-chat'
         );
-      
-      case 'free':
-      default:
+      } catch (deepseekError: any) {
+        console.error('DeepSeek also failed, using Free AI fallback:', deepseekError.message);
+        // Fallback to Free AI
         const freeResponse = await freeAIGetResponse(userQuery, context);
         return {
           content: freeResponse,
-          model: 'free-ai',
-          responseTime: 0,
+          model: 'free-ai-fallback',
+          responseTime: Date.now() - startTime,
         };
+      }
     }
-  } catch (error: any) {
-    console.error(`Error with ${model} for Jyotish:`, error);
-    
-    // Fallback
-    if (model !== 'free') {
+  }
+
+  if (model === 'deepseek') {
+    try {
+      return await deepSeekGetResponse(
+        userQuery,
+        context,
+        (specificModel as DeepSeekModel) || 'deepseek-chat'
+      );
+    } catch (error: any) {
+      console.error('DeepSeek failed, using Free AI fallback:', error.message);
       const freeResponse = await freeAIGetResponse(userQuery, context);
       return {
         content: freeResponse,
         model: 'free-ai-fallback',
-        responseTime: 0,
+        responseTime: Date.now() - startTime,
       };
     }
-    
-    throw error;
+  }
+
+  // Free AI or default
+  try {
+    const freeResponse = await freeAIGetResponse(userQuery, context);
+    return {
+      content: freeResponse,
+      model: 'free-ai',
+      responseTime: Date.now() - startTime,
+    };
+  } catch (error: any) {
+    throw new Error(`All AI models failed: ${error.message}`);
   }
 };
 
@@ -191,7 +233,7 @@ export const getAIJyotishResponse = async (
 export const testModels = async (
   prompt: string,
   systemPrompt?: string,
-  models: AIModel[] = ['deepseek', 'openai', 'free']
+  models: AIModel[] = ['openai', 'deepseek', 'free']
 ): Promise<Record<AIModel, AIResponse | { error: string }>> => {
   const results: Record<string, AIResponse | { error: string }> = {};
 

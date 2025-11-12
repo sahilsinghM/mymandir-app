@@ -13,5 +13,7 @@ export type MainTabParamList = {
   AIJyotish: undefined;
   MantraPlayer: undefined;
   Profile: undefined;
+  Panchang: undefined;
+  ExpertJyotish: undefined;
 };
 
