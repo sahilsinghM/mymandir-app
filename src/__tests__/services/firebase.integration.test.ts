@@ -3,7 +3,8 @@
  * NO MOCKS - Uses actual Firebase from .env
  */
 
-import { getFirebaseAuth, getFirestoreDB, isFirebaseConfigured } from '../../services/firebase';
+import { getFirebaseAuth, getFirestoreDB } from '../../services/firebase';
+import { isFirebaseConfigured } from '../../utils/firebaseHelper';
 import { env } from '../../config/env';
 
 describe('Firebase Service - Real Integration Tests', () => {
@@ -63,5 +64,4 @@ describe('Firebase Service - Real Integration Tests', () => {
     });
   });
 });
-
 

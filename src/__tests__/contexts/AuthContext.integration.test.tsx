@@ -6,7 +6,8 @@
  */
 
 import React from 'react';
-import { renderHook, act, waitFor } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-hooks';
+import { waitFor } from '@testing-library/react-native';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 
 describe('AuthContext - Real Integration Tests', () => {
@@ -107,5 +108,4 @@ describe('AuthContext - Real Integration Tests', () => {
     });
   });
 });
-
 

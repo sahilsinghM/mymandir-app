@@ -13,6 +13,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -95,9 +97,9 @@ export const scheduleDailyNotification = async (
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        repeats: true,
       },
     });
 
@@ -258,7 +260,9 @@ export const sendTestNotification = async (): Promise<void> => {
         sound: 'default',
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 2,
+        repeats: false,
       },
     });
   } catch (error) {
@@ -266,4 +270,3 @@ export const sendTestNotification = async (): Promise<void> => {
     throw error;
   }
 };
-

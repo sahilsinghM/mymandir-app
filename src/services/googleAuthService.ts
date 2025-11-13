@@ -113,7 +113,7 @@ export const signInWithGoogle = async (): Promise<{
       scopes: ['openid', 'profile', 'email'],
       responseType: AuthSession.ResponseType.IdToken, // Implicit flow - direct ID token
       redirectUri,
-      additionalParameters: {
+      extraParams: {
         // Nonce is REQUIRED for id_token response type by Google
         // Must be included as additional parameter
         nonce: nonce,
@@ -148,7 +148,12 @@ export const signInWithGoogle = async (): Promise<{
         accessToken: (access_token as string) || null,
       };
     } else if (result.type === 'error') {
-      const errorMsg = result.error?.message || result.error?.error_description || 'Unknown error';
+      const errorFromResult = typeof result.error === 'string' ? result.error : result.error?.message;
+      const errorDescription =
+        typeof result.params?.error_description === 'string'
+          ? result.params?.error_description
+          : undefined;
+      const errorMsg = errorFromResult || errorDescription || 'Unknown error';
       console.error('OAuth error details:', result.error);
       throw new Error(`Google sign-in error: ${errorMsg}. Check redirect URI in Google Cloud Console.`);
     } else {
@@ -213,4 +218,3 @@ export const signInToFirebaseWithGoogle = async (): Promise<void> => {
     throw error;
   }
 };
-

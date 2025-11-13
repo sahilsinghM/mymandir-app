@@ -3,6 +3,9 @@
  */
 
 import { getDailyHoroscope, getWeeklyHoroscope, getMonthlyHoroscope } from '../../services/astroService';
+import { ZodiacSign } from '../../types';
+
+const testSign: ZodiacSign = 'Aries';
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -29,7 +32,7 @@ describe('astroService', () => {
         json: async () => mockData,
       });
 
-      const result = await getDailyHoroscope('aries');
+      const result = await getDailyHoroscope(testSign);
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('aztro.sameerkumar.website'),
@@ -38,7 +41,7 @@ describe('astroService', () => {
         })
       );
       expect(result).toBeDefined();
-      expect(result.sign).toBe('aries');
+      expect(result.sign).toBe(testSign);
       expect(result.prediction).toBe('Test horoscope');
     });
 
@@ -49,18 +52,18 @@ describe('astroService', () => {
       });
 
       // Should fallback to mock data
-      const result = await getDailyHoroscope('aries');
+      const result = await getDailyHoroscope(testSign);
       expect(result).toBeDefined();
-      expect(result.sign).toBe('aries');
+      expect(result.sign).toBe(testSign);
     });
 
     it('should handle network errors and return fallback', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
       // Should fallback to mock data
-      const result = await getDailyHoroscope('aries');
+      const result = await getDailyHoroscope(testSign);
       expect(result).toBeDefined();
-      expect(result.sign).toBe('aries');
+      expect(result.sign).toBe(testSign);
     });
   });
 
@@ -76,10 +79,10 @@ describe('astroService', () => {
         json: async () => mockData,
       });
 
-      const result = await getWeeklyHoroscope('aries');
+      const result = await getWeeklyHoroscope(testSign);
 
       expect(result).toBeDefined();
-      expect(result.sign).toBe('aries');
+      expect(result.sign).toBe(testSign);
     });
   });
 
@@ -95,11 +98,10 @@ describe('astroService', () => {
         json: async () => mockData,
       });
 
-      const result = await getMonthlyHoroscope('aries');
+      const result = await getMonthlyHoroscope(testSign);
 
       expect(result).toBeDefined();
-      expect(result.sign).toBe('aries');
+      expect(result.sign).toBe(testSign);
     });
   });
 });
-

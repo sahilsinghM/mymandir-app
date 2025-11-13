@@ -10,10 +10,13 @@ export const colors = {
   primary: '#FF6F00', // Saffron
   primaryDark: '#E65100',
   primaryLight: '#FFB74D',
+  gradientLight: '#FFE0B2',
   
   // Secondary colors
   secondary: '#FFFFFF',
   secondaryDark: '#F5F5F5',
+  surface: '#FFFFFF',
+  cardBackground: '#FFF3E0',
   
   // Accent colors
   accent: '#FFD700', // Gold

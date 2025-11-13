@@ -46,7 +46,12 @@ export const ThemedInput: React.FC<ThemedInputProps> = ({
       >
         {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
         <TextInput
-          style={[styles.input, leftIcon && styles.inputWithLeftIcon, rightIcon && styles.inputWithRightIcon]}
+          style={[
+            styles.input,
+            leftIcon ? styles.inputWithLeftIcon : undefined,
+            rightIcon ? styles.inputWithRightIcon : undefined,
+            style,
+          ]}
           placeholderTextColor={theme.colors.textLight}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -129,4 +134,3 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
 });
-

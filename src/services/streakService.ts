@@ -11,6 +11,14 @@ import { StreakData } from '../types';
 const STREAK_STORAGE_KEY = '@mymandir:streak';
 const STREAK_FIRESTORE_COLLECTION = 'streaks';
 
+const getDefaultStreakData = (): StreakData => ({
+  currentStreak: 0,
+  longestStreak: 0,
+  totalDays: 0,
+  lastCheckIn: null,
+  karmaPoints: 0,
+});
+
 /**
  * Check if two dates are on the same day
  */
@@ -131,17 +139,7 @@ export const getStreakData = async (userId?: string, isGuest: boolean = false): 
   }
 
   // Return default if no data exists
-  if (!streakData) {
-    return {
-      currentStreak: 0,
-      longestStreak: 0,
-      totalDays: 0,
-      lastCheckIn: null,
-      karmaPoints: 0,
-    };
-  }
-
-  return streakData;
+  return streakData || getDefaultStreakData();
 };
 
 /**
@@ -263,3 +261,36 @@ export const hasCheckedInToday = async (
   return isSameDay(lastCheckIn, today);
 };
 
+export const updateStreak = async (
+  userId?: string,
+  isGuest: boolean = false
+): Promise<StreakData> => {
+  const { streakData } = await recordCheckIn(userId, isGuest);
+  return streakData;
+};
+
+export const getStreak = async (
+  userId?: string,
+  isGuest: boolean = false
+): Promise<StreakData> => {
+  return getStreakData(userId, isGuest);
+};
+
+export const resetStreak = async (
+  userId?: string,
+  isGuest: boolean = false
+): Promise<StreakData> => {
+  const defaultData = getDefaultStreakData();
+
+  if (isGuest || !userId || userId === 'guest-user') {
+    await saveStreakToStorage(defaultData);
+  } else {
+    try {
+      await saveStreakToFirestore(userId, defaultData);
+    } catch (error) {
+      await saveStreakToStorage(defaultData);
+    }
+  }
+
+  return defaultData;
+};

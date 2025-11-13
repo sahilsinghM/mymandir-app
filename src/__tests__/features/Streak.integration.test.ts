@@ -4,7 +4,6 @@
  */
 
 import { updateStreak, getStreak, resetStreak } from '../../services/streakService';
-import { getFirestoreDB } from '../../services/firebase';
 import { isFirebaseConfigured } from '../../utils/firebaseHelper';
 
 describe('Streak Tracking Feature - Real Integration Tests', () => {
@@ -55,7 +54,7 @@ describe('Streak Tracking Feature - Real Integration Tests', () => {
         
         expect(streak).toBeDefined();
         expect(streak.currentStreak).toBeGreaterThanOrEqual(0);
-        expect(streak.totalCheckIns).toBeGreaterThanOrEqual(0);
+        expect(streak.totalDays).toBeGreaterThanOrEqual(0);
       } catch (error: any) {
         if (error.message.includes('Firebase is not configured')) {
           console.warn('⚠️ Firebase not configured - add credentials to .env');
@@ -93,5 +92,4 @@ describe('Streak Tracking Feature - Real Integration Tests', () => {
     }, 15000);
   });
 });
-
 

@@ -3,7 +3,7 @@
  * Tests expert directory service
  */
 
-import { getAllExperts, searchExperts } from '../../services/expertJyotishService';
+import { getAllExperts, searchExperts, ExpertJyotish } from '../../services/expertJyotishService';
 
 describe('Expert Jyotish Feature - Real Integration Tests', () => {
   describe('getAllExperts', () => {
@@ -23,15 +23,15 @@ describe('Expert Jyotish Feature - Real Integration Tests', () => {
     }, 10000);
 
     it('should have valid expert data structure', async () => {
-      const experts = await getExperts();
+      const experts = await getAllExperts();
       
-      experts.forEach((expert) => {
+      experts.forEach((expert: ExpertJyotish) => {
         expect(expert).toHaveProperty('id');
         expect(expert).toHaveProperty('name');
         expect(expert).toHaveProperty('specialization');
         expect(expert).toHaveProperty('experience');
         expect(expert).toHaveProperty('rating');
-        expect(expert).toHaveProperty('contact');
+        expect(expert).toHaveProperty('contactMethods');
       });
     }, 10000);
   });
@@ -59,4 +59,3 @@ describe('Expert Jyotish Feature - Real Integration Tests', () => {
     }, 10000);
   });
 });
-

@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
 import { FreeAIService, ShlokaGeneration } from '../../services/freeAIService';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserProfile as AppUserProfile } from '../../types/firestore';
+import { User } from '../../types';
 
 interface ShlokaGeneratorProps {
   onShlokaGenerated?: (shloka: ShlokaGeneration) => void;
@@ -24,18 +24,19 @@ const EMOTION_SUGGESTIONS = [
   'Peace', 'Love', 'Gratitude', 'Courage', 'Wisdom', 'Forgiveness',
   'Compassion', 'Joy', 'Hope', 'Strength', 'Humility', 'Devotion'
 ];
-
 export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
   onShlokaGenerated,
 }) => {
-  const { userProfile } = useAuth();
+  const { user } = useAuth();
   const [emotion, setEmotion] = useState('');
   const [generatedShloka, setGeneratedShloka] = useState<ShlokaGeneration | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const buildProfilePayload = (profile: AppUserProfile | null | undefined) => ({
-    deityPreference: profile?.deityPreference,
-    language: profile?.language,
+  const buildProfilePayload = (profile: User | null | undefined) => ({
+    deityPreference: undefined,
+    language: undefined,
+    email: profile?.email,
+    displayName: profile?.displayName,
   });
 
   const formatCategory = (category: ShlokaGeneration['category']) =>
@@ -53,7 +54,7 @@ export const ShlokaGenerator: React.FC<ShlokaGeneratorProps> = ({
 
       const result = await FreeAIService.generateShloka(
         emotion.trim(),
-        buildProfilePayload(userProfile)
+        buildProfilePayload(user)
       );
 
       setGeneratedShloka(result);

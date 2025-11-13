@@ -6,7 +6,7 @@
 import { env } from '../config/env';
 import { generateText as openAIGenerateText, getAIJyotishResponse as openAIGetResponse } from './openaiService';
 import { generateText as deepSeekGenerateText, getAIJyotishResponse as deepSeekGetResponse, AIResponse } from './deepseekService';
-import { generateText as freeAIGenerateText, getAIJyotishResponse as freeAIGetResponse } from './freeAIService';
+import { FreeAIService } from './freeAIService';
 
 export type AIModel = 'openai' | 'deepseek' | 'free';
 export type OpenAIModel = 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo';
@@ -78,6 +78,31 @@ export const getAvailableModels = (): ModelConfig[] => {
   return models;
 };
 
+const buildFreePrompt = (prompt: string, systemPrompt?: string) =>
+  systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+
+const generateWithFreeAI = async (prompt: string, systemPrompt?: string): Promise<string> => {
+  const response = await FreeAIService.generateJyotishResponse(
+    buildFreePrompt(prompt, systemPrompt),
+    undefined
+  );
+  return response.content;
+};
+
+const getFreeAIResponse = async (userQuery: string, context?: string): Promise<AIResponse> => {
+  const startTime = Date.now();
+  const response = await FreeAIService.generateJyotishResponse(
+    context ? `Context: ${context}\n\nQuestion: ${userQuery}` : userQuery,
+    undefined
+  );
+
+  return {
+    content: response.content,
+    model: response.provider || 'free-ai',
+    responseTime: Date.now() - startTime,
+  };
+};
+
 /**
  * Generate text using specified AI model with automatic fallback
  * Priority: OpenAI → DeepSeek → Free AI
@@ -111,7 +136,7 @@ export const generateWithModel = async (
       } catch (deepseekError: any) {
         console.error('DeepSeek also failed, using Free AI fallback:', deepseekError.message);
         // Fallback to Free AI
-        const freeResponse = await freeAIGenerateText(prompt, systemPrompt);
+        const freeResponse = await generateWithFreeAI(prompt, systemPrompt);
         return {
           content: freeResponse,
           model: 'free-ai-fallback',
@@ -130,7 +155,7 @@ export const generateWithModel = async (
       );
     } catch (error: any) {
       console.error('DeepSeek failed, using Free AI fallback:', error.message);
-      const freeResponse = await freeAIGenerateText(prompt, systemPrompt);
+      const freeResponse = await generateWithFreeAI(prompt, systemPrompt);
       return {
         content: freeResponse,
         model: 'free-ai-fallback',
@@ -140,16 +165,12 @@ export const generateWithModel = async (
   }
 
   // Free AI or default
-  try {
-    const freeResponse = await freeAIGenerateText(prompt, systemPrompt);
-    return {
-      content: freeResponse,
-      model: 'free-ai',
-      responseTime: Date.now() - startTime,
-    };
-  } catch (error: any) {
-    throw new Error(`All AI models failed: ${error.message}`);
-  }
+  const freeResponse = await generateWithFreeAI(prompt, systemPrompt);
+  return {
+    content: freeResponse,
+    model: 'free-ai',
+    responseTime: Date.now() - startTime,
+  };
 };
 
 /**
@@ -186,12 +207,7 @@ export const getAIJyotishResponse = async (
       } catch (deepseekError: any) {
         console.error('DeepSeek also failed, using Free AI fallback:', deepseekError.message);
         // Fallback to Free AI
-        const freeResponse = await freeAIGetResponse(userQuery, context);
-        return {
-          content: freeResponse,
-          model: 'free-ai-fallback',
-          responseTime: Date.now() - startTime,
-        };
+        return getFreeAIResponse(userQuery, context);
       }
     }
   }
@@ -205,26 +221,12 @@ export const getAIJyotishResponse = async (
       );
     } catch (error: any) {
       console.error('DeepSeek failed, using Free AI fallback:', error.message);
-      const freeResponse = await freeAIGetResponse(userQuery, context);
-      return {
-        content: freeResponse,
-        model: 'free-ai-fallback',
-        responseTime: Date.now() - startTime,
-      };
+      return getFreeAIResponse(userQuery, context);
     }
   }
 
   // Free AI or default
-  try {
-    const freeResponse = await freeAIGetResponse(userQuery, context);
-    return {
-      content: freeResponse,
-      model: 'free-ai',
-      responseTime: Date.now() - startTime,
-    };
-  } catch (error: any) {
-    throw new Error(`All AI models failed: ${error.message}`);
-  }
+  return getFreeAIResponse(userQuery, context);
 };
 
 /**
@@ -254,4 +256,3 @@ export const testModels = async (
 
   return results as Record<AIModel, AIResponse | { error: string }>;
 };
-
