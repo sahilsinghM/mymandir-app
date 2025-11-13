@@ -9,7 +9,7 @@ let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: env.firebase.apiKey,
   authDomain: env.firebase.authDomain,
   projectId: env.firebase.projectId,
@@ -108,4 +108,3 @@ if (env.firebase.apiKey && env.firebase.apiKey !== 'your_firebase_api_key_here')
     console.warn('Firebase initialization failed:', error);
   }
 }
-

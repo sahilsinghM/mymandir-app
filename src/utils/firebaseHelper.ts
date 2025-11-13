@@ -19,6 +19,7 @@ export const saveUserProfile = async (user: User): Promise<void> => {
       userRef,
       {
         ...user,
+        phoneNumber: user.phoneNumber || null,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -44,6 +45,7 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
         id: data.id,
         email: data.email,
         displayName: data.displayName,
+        phoneNumber: data.phoneNumber,
         photoURL: data.photoURL,
         createdAt: data.createdAt?.toDate() || new Date(),
         lastLoginAt: data.lastLoginAt?.toDate(),
@@ -73,4 +75,3 @@ export const isFirebaseConfigured = (): boolean => {
     return false;
   }
 };
-

@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userData: User = {
             id: firebaseUser.uid,
             email: firebaseUser.email || undefined,
+            phoneNumber: firebaseUser.phoneNumber || undefined,
             displayName: firebaseUser.displayName || undefined,
             photoURL: firebaseUser.photoURL || undefined,
             createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
@@ -260,4 +261,3 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

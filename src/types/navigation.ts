@@ -10,10 +10,8 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Horoscope: undefined;
-  AIJyotish: undefined;
+  Panchang: undefined;
+  Guidance: undefined;
   MantraPlayer: undefined;
   Profile: undefined;
-  Panchang: undefined;
-  ExpertJyotish: undefined;
 };
-
